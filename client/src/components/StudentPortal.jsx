@@ -6,12 +6,21 @@ const StudentPortal = () => {
   const [exam, setExam] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Exam-taking state
+  const [isExamStarted, setIsExamStarted] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [score, setScore] = useState(null);
 
   const handleStartExam = async () => {
     if (!examId) return;
     setLoading(true);
     setError('');
     setExam(null);
+    setIsExamStarted(false);
+    setIsSubmitted(false);
     try {
       const data = await examService.getExamById(examId);
       setExam(data);
@@ -21,6 +30,129 @@ const StudentPortal = () => {
       setLoading(false);
     }
   };
+
+  const startTakingExam = () => {
+    setIsExamStarted(true);
+    setCurrentQuestionIndex(0);
+    setSelectedAnswers({});
+    setIsSubmitted(false);
+  };
+
+  const handleAnswerSelect = (questionId, answer) => {
+    setSelectedAnswers(prev => ({
+      ...prev,
+      [questionId]: answer
+    }));
+  };
+
+  const handleNextQuestion = () => {
+    if (currentQuestionIndex < exam.questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    }
+  };
+
+  const handlePrevQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+  };
+
+  const handleSubmitExam = async () => {
+    let correctCount = 0;
+    exam.questions.forEach(q => {
+      if (selectedAnswers[q.id] === q.correctAnswer) {
+        correctCount++;
+      }
+    });
+
+    const finalScore = {
+      examId: exam.id,
+      examTitle: exam.title,
+      score: (correctCount / exam.questions.length) * 100,
+      studentName: 'Student User', // Hardcoded for mock implementation
+      date: new Date().toISOString()
+    };
+
+    try {
+      await examService.submitScore(finalScore);
+      setScore(finalScore.score);
+      setIsSubmitted(true);
+      setIsExamStarted(false);
+    } catch (err) {
+      setError('Failed to submit exam.');
+    }
+  };
+
+  if (isSubmitted) {
+    return (
+      <div className="container mt-4 text-center">
+        <div className="card shadow p-5">
+          <h2 className="text-success mb-4">Exam Completed!</h2>
+          <h4>Your Score: <span className="badge bg-primary">{score.toFixed(1)}%</span></h4>
+          <button 
+            className="btn btn-outline-secondary mt-4" 
+            onClick={() => {
+              setExam(null);
+              setIsSubmitted(false);
+              setExamId('');
+            }}
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isExamStarted && exam) {
+    const question = exam.questions[currentQuestionIndex];
+    return (
+      <div className="container mt-4">
+        <div className="card shadow">
+          <div className="card-header bg-primary text-white d-flex justify-content-between">
+            <h4 className="mb-0">{exam.title}</h4>
+            <span>Question {currentQuestionIndex + 1} of {exam.questions.length}</span>
+          </div>
+          <div className="card-body">
+            <h5>{question.text}</h5>
+            <div className="list-group mt-3">
+              {question.options.map((option, index) => (
+                <button
+                  key={index}
+                  className={`list-group-item list-group-item-action ${selectedAnswers[question.id] === option ? 'active' : ''}`}
+                  onClick={() => handleAnswerSelect(question.id, option)}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="card-footer d-flex justify-content-between">
+            <button 
+              className="btn btn-secondary" 
+              onClick={handlePrevQuestion}
+              disabled={currentQuestionIndex === 0}
+            >
+              Previous
+            </button>
+            {currentQuestionIndex === exam.questions.length - 1 ? (
+              <button 
+                className="btn btn-success" 
+                onClick={handleSubmitExam}
+                disabled={Object.keys(selectedAnswers).length < exam.questions.length}
+              >
+                Submit Exam
+              </button>
+            ) : (
+              <button className="btn btn-primary" onClick={handleNextQuestion}>
+                Next
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mt-4">
@@ -52,7 +184,7 @@ const StudentPortal = () => {
             <div className="mt-4 p-3 border rounded bg-light">
               <h4>Ready for: {exam.title}</h4>
               <p>{exam.questions.length} questions will be presented.</p>
-              <button className="btn btn-success">Begin Now</button>
+              <button className="btn btn-success" onClick={startTakingExam}>Begin Now</button>
             </div>
           )}
         </div>
