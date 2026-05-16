@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { examService } from '../api/examService';
 
+// הרכיב של פורטל הסטודנטים.
 const StudentPortal = () => {
+  // המצבים של חיפוש ובחירת המבחן.
   const [examId, setExamId] = useState('');
   const [exam, setExam] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -14,6 +16,7 @@ const StudentPortal = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [score, setScore] = useState(null);
 
+  // פונקציה אסינכרונית שמעדכנת את המבחן המיוצג לפי Id.
   const handleStartExam = async () => {
     if (!examId) return;
     setLoading(true);
@@ -31,6 +34,7 @@ const StudentPortal = () => {
     }
   };
 
+  // פונקציה שמתחילה את המבחן.
   const startTakingExam = () => {
     setIsExamStarted(true);
     setCurrentQuestionIndex(0);
@@ -38,6 +42,7 @@ const StudentPortal = () => {
     setIsSubmitted(false);
   };
 
+  // פונקציה ששומרת את התשובות הנבחרות.
   const handleAnswerSelect = (questionId, answer) => {
     setSelectedAnswers(prev => ({
       ...prev,
@@ -45,18 +50,21 @@ const StudentPortal = () => {
     }));
   };
 
+  // פונקציה שמעבירה לשאלה הבאה.
   const handleNextQuestion = () => {
     if (currentQuestionIndex < exam.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
 
+  // פונקציה שמחזירה השאלה הקודמת.
   const handlePrevQuestion = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
     }
   };
 
+  // פונקציה אסינכרונית להגשת המבחן עם הציון שהתקבל.
   const handleSubmitExam = async () => {
     let correctCount = 0;
     exam.questions.forEach(q => {
@@ -104,6 +112,7 @@ const StudentPortal = () => {
     );
   }
 
+  // הצגת המבחן הנבחר.
   if (isExamStarted && exam) {
     const question = exam.questions[currentQuestionIndex];
     return (
@@ -154,6 +163,7 @@ const StudentPortal = () => {
     );
   }
 
+  // הצדת חיפוש ובחירת המבחן.
   return (
     <div className="container mt-4">
       <h2>Student Portal</h2>

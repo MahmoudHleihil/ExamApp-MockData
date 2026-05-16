@@ -1,3 +1,4 @@
+// אובייקט שמייצג מסד הנתונים המדומה.
 export const mockDb = {
   exams: [
     {

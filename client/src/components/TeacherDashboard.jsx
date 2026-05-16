@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { examService } from '../api/examService';
 
+// רכיב הדשבורד של המורה.
 const TeacherDashboard = () => {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,6 +15,7 @@ const TeacherDashboard = () => {
     ]
   });
 
+  // פונקציה אסינכרונית לבקש ולעדכן המבחנים ברכיב.
   const fetchExams = async () => {
     setLoading(true);
     try {
@@ -26,10 +28,12 @@ const TeacherDashboard = () => {
     }
   };
 
+  // רץ רק אחרי שהרכיב נטען.
   useEffect(() => {
     fetchExams();
   }, []);
 
+  // פונקציה של הוספת שאלה.
   const handleAddQuestion = () => {
     setNewExam(prev => ({
       ...prev,
@@ -40,18 +44,21 @@ const TeacherDashboard = () => {
     }));
   };
 
+  // פונקציה של עדכון השאלה.
   const handleQuestionChange = (index, field, value) => {
     const updatedQuestions = [...newExam.questions];
     updatedQuestions[index][field] = value;
     setNewExam(prev => ({ ...prev, questions: updatedQuestions }));
   };
 
+  // פונקציה של שינוי בחירת תשובה.
   const handleOptionChange = (qIndex, oIndex, value) => {
     const updatedQuestions = [...newExam.questions];
     updatedQuestions[qIndex].options[oIndex] = value;
     setNewExam(prev => ({ ...prev, questions: updatedQuestions }));
   };
 
+  // פונקציה של ייצור בחינה.
   const handleCreateExam = async (e) => {
     e.preventDefault();
     try {
@@ -67,6 +74,7 @@ const TeacherDashboard = () => {
     }
   };
 
+  // הצגת הרכיב.
   return (
     <div className="container mt-4">
       <div className="d-flex justify-content-between align-items-center">
@@ -79,6 +87,7 @@ const TeacherDashboard = () => {
         </button>
       </div>
 
+      // טופס הוספת המבחן.
       {showAddForm && (
         <div className="card shadow-sm mt-3">
           <div className="card-body">
@@ -152,6 +161,7 @@ const TeacherDashboard = () => {
         </div>
       )}
 
+      // הצגת המבחנים.
       <div className="card shadow-sm mt-3">
         <div className="card-body">
           <h5 className="card-title">Manage Existing Exams</h5>
