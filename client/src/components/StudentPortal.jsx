@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { examService } from '../api/examService';
 
-// הרכיב של פורטל הסטודנטים.
 const StudentPortal = () => {
-  // המצבים של חיפוש ובחירת המבחן.
   const [examId, setExamId] = useState('');
   const [exam, setExam] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -11,12 +9,14 @@ const StudentPortal = () => {
   
   // Exam-taking state
   const [isExamStarted, setIsExamStarted] = useState(false);
+  const [enteredPassword, setEnteredPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [score, setScore] = useState(null);
+  const [finalResult, setFinalResult] = useState(null);
 
-  // פונקציה אסינכרונית שמעדכנת את המבחן המיוצג לפי Id.
+  // פונקציית חיפוש על הבחינה לפי Id.
   const handleStartExam = async () => {
     if (!examId) return;
     setLoading(true);
@@ -24,6 +24,8 @@ const StudentPortal = () => {
     setExam(null);
     setIsExamStarted(false);
     setIsSubmitted(false);
+    setEnteredPassword('');
+    setPasswordError('');
     try {
       const data = await examService.getExamById(examId);
       setExam(data);
@@ -34,56 +36,89 @@ const StudentPortal = () => {
     }
   };
 
-  // פונקציה שמתחילה את המבחן.
+  // פונקציית תחילת הבחינה.
   const startTakingExam = () => {
+    // בדיקת הסיסמה.
+    if (exam.password && enteredPassword !== exam.password) {
+      setPasswordError('Incorrect password. Please try again.');
+      return;
+    }
     setIsExamStarted(true);
     setCurrentQuestionIndex(0);
     setSelectedAnswers({});
     setIsSubmitted(false);
   };
 
-  // פונקציה ששומרת את התשובות הנבחרות.
-  const handleAnswerSelect = (questionId, answer) => {
-    setSelectedAnswers(prev => ({
-      ...prev,
-      [questionId]: answer
-    }));
-  };
-
-  // פונקציה שמעבירה לשאלה הבאה.
-  const handleNextQuestion = () => {
-    if (currentQuestionIndex < exam.questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+  // פונקציה של שינוי התשובה של השאלה.
+  const handleAnswerChange = (questionId, answer, type) => {
+    if (type === 'multiple-response') {
+      setSelectedAnswers(prev => {
+        const current = prev[questionId] || [];
+        if (current.includes(answer)) {
+          return { ...prev, [questionId]: current.filter(a => a !== answer) };
+        } else {
+          return { ...prev, [questionId]: [...current, answer] };
+        }
+      });
+    } else {
+      setSelectedAnswers(prev => ({
+        ...prev,
+        [questionId]: answer
+      }));
     }
   };
 
-  // פונקציה שמחזירה השאלה הקודמת.
-  const handlePrevQuestion = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-    }
-  };
+  // חישוב ציון המבחן.
+  const calculateScore = () => {
+    let totalPoints = 0;
 
-  // פונקציה אסינכרונית להגשת המבחן עם הציון שהתקבל.
-  const handleSubmitExam = async () => {
-    let correctCount = 0;
+    // הוספת נקודה אחת לכל תשובה נכונה.
     exam.questions.forEach(q => {
-      if (selectedAnswers[q.id] === q.correctAnswer) {
-        correctCount++;
+      const studentAns = selectedAnswers[q.id];
+      const correctAns = q.correctAnswer;
+
+      if (q.type === 'multiple-response') {
+        // All correct options must be selected, and no incorrect ones
+        if (Array.isArray(studentAns) && Array.isArray(correctAns)) {
+          const isCorrect = studentAns.length === correctAns.length && 
+                          studentAns.every(val => correctAns.includes(val));
+          if (isCorrect) totalPoints++;
+        }
+      } else if (q.type === 'written') {
+        if (typeof studentAns === 'string' && typeof correctAns === 'string') {
+          if (studentAns.trim().toLowerCase() === correctAns.trim().toLowerCase()) {
+            totalPoints++;
+          }
+        }
+      } else {
+        // multiple-choice, true-false
+        if (studentAns === correctAns) {
+          totalPoints++;
+        }
       }
     });
 
-    const finalScore = {
+    // חישוב והחזרת הציון.
+    return (totalPoints / exam.questions.length) * 100;
+  };
+
+  // פונקציית הגשת המבחן.
+  const handleSubmitExam = async () => {
+    const score = calculateScore();
+    // יצירת אובייקט התוצאה.
+    const result = {
       examId: exam.id,
       examTitle: exam.title,
-      score: (correctCount / exam.questions.length) * 100,
-      studentName: 'Student User', // Hardcoded for mock implementation
-      date: new Date().toISOString()
+      score: score,
+      studentName: 'Student User',
+      date: new Date().toISOString(),
+      answers: selectedAnswers
     };
 
+    // הגשת התוצאה.
     try {
-      await examService.submitScore(finalScore);
-      setScore(finalScore.score);
+      await examService.submitScore(result);
+      setFinalResult(result);
       setIsSubmitted(true);
       setIsExamStarted(false);
     } catch (err) {
@@ -91,69 +126,141 @@ const StudentPortal = () => {
     }
   };
 
-  if (isSubmitted) {
+  // תצוגת השאלה עם התשובה הנבחרת.
+  const renderQuestionInput = (question) => {
+    switch (question.type) {
+      case 'multiple-choice':
+      case 'true-false':
+        return (
+          <div className="list-group mt-3">
+            {question.options.map((option, index) => (
+              <button
+                key={index}
+                className={`list-group-item list-group-item-action ${selectedAnswers[question.id] === option ? 'active' : ''}`}
+                onClick={() => handleAnswerChange(question.id, option, question.type)}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        );
+      case 'multiple-response':
+        return (
+          <div className="list-group mt-3">
+            {question.options.map((option, index) => {
+              const isSelected = (selectedAnswers[question.id] || []).includes(option);
+              return (
+                <button
+                  key={index}
+                  className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${isSelected ? 'list-group-item-primary' : ''}`}
+                  onClick={() => handleAnswerChange(question.id, option, question.type)}
+                >
+                  {option}
+                  {isSelected && <span className="badge bg-primary rounded-pill">Selected</span>}
+                </button>
+              );
+            })}
+            <div className="form-text mt-2">Select all that apply.</div>
+          </div>
+        );
+      case 'written':
+        return (
+          <div className="mt-3">
+            <textarea
+              className="form-control"
+              rows="3"
+              placeholder="Type your answer here..."
+              value={selectedAnswers[question.id] || ''}
+              onChange={(e) => handleAnswerChange(question.id, e.target.value, question.type)}
+            />
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // אחרי הגשת המבחן וקבלת הציון.
+  if (isSubmitted && finalResult) {
     return (
       <div className="container mt-4 text-center">
-        <div className="card shadow p-5">
-          <h2 className="text-success mb-4">Exam Completed!</h2>
-          <h4>Your Score: <span className="badge bg-primary">{score.toFixed(1)}%</span></h4>
+        <div className="card shadow border-0 p-5 bg-light">
+          <div className="mb-4">
+            <div className="display-1 text-success mb-2">
+              <i className="bi bi-check-circle"></i>
+            </div>
+            <h2 className="fw-bold">Exam Completed!</h2>
+            <p className="text-muted">Well done on finishing the <strong>{finalResult.examTitle}</strong> exam.</p>
+          </div>
+          
+          <div className="card mx-auto shadow-sm" style={{maxWidth: '300px'}}>
+            <div className="card-body">
+              <h6 className="text-uppercase small text-muted mb-1">Your Score</h6>
+              <h1 className={`display-4 fw-bold ${finalResult.score >= 60 ? 'text-success' : 'text-danger'}`}>
+                {finalResult.score.toFixed(0)}%
+              </h1>
+            </div>
+          </div>
+
           <button 
-            className="btn btn-outline-secondary mt-4" 
+            className="btn btn-primary mt-5 px-5" 
             onClick={() => {
               setExam(null);
               setIsSubmitted(false);
               setExamId('');
+              setFinalResult(null);
             }}
           >
-            Go Back
+            Finish & Exit
           </button>
         </div>
       </div>
     );
   }
 
-  // הצגת המבחן הנבחר.
+  // המבחן התחיל.
   if (isExamStarted && exam) {
+    // השאלה הנוכחית.
     const question = exam.questions[currentQuestionIndex];
+    // אחוז ההתקדמות במבחן.
+    const progress = ((currentQuestionIndex + 1) / exam.questions.length) * 100;
+
     return (
       <div className="container mt-4">
-        <div className="card shadow">
-          <div className="card-header bg-primary text-white d-flex justify-content-between">
-            <h4 className="mb-0">{exam.title}</h4>
-            <span>Question {currentQuestionIndex + 1} of {exam.questions.length}</span>
+        <div className="progress mb-4" style={{height: '8px'}}>
+          <div className="progress-bar" role="progressbar" style={{width: `${progress}%`}}></div>
+        </div>
+
+        <div className="card shadow border-0">
+          <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h4 className="mb-0 text-primary fw-bold">{exam.title}</h4>
+            <span className="badge bg-secondary py-2 px-3">Question {currentQuestionIndex + 1} of {exam.questions.length}</span>
           </div>
-          <div className="card-body">
-            <h5>{question.text}</h5>
-            <div className="list-group mt-3">
-              {question.options.map((option, index) => (
-                <button
-                  key={index}
-                  className={`list-group-item list-group-item-action ${selectedAnswers[question.id] === option ? 'active' : ''}`}
-                  onClick={() => handleAnswerSelect(question.id, option)}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
+          <div className="card-body p-4">
+            <h5 className="card-title mb-4 lh-base">{question.text}</h5>
+            {renderQuestionInput(question)}
           </div>
-          <div className="card-footer d-flex justify-content-between">
+          <div className="card-footer bg-white border-0 p-4 d-flex justify-content-between">
             <button 
-              className="btn btn-secondary" 
-              onClick={handlePrevQuestion}
+              className="btn btn-outline-secondary px-4" 
+              onClick={() => setCurrentQuestionIndex(prev => prev - 1)}
               disabled={currentQuestionIndex === 0}
             >
               Previous
             </button>
+            
             {currentQuestionIndex === exam.questions.length - 1 ? (
               <button 
-                className="btn btn-success" 
+                className="btn btn-success px-5 fw-bold" 
                 onClick={handleSubmitExam}
-                disabled={Object.keys(selectedAnswers).length < exam.questions.length}
               >
                 Submit Exam
               </button>
             ) : (
-              <button className="btn btn-primary" onClick={handleNextQuestion}>
+              <button 
+                className="btn btn-primary px-5" 
+                onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
+              >
                 Next
               </button>
             )}
@@ -163,40 +270,71 @@ const StudentPortal = () => {
     );
   }
 
-  // הצדת חיפוש ובחירת המבחן.
   return (
     <div className="container mt-4">
-      <h2>Student Portal</h2>
-      <div className="card shadow-sm mt-3">
-        <div className="card-body">
-          <h5 className="card-title">Enter Exam ID to Start</h5>
-          <div className="input-group mb-3 mt-3">
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Example: 1"
-              value={examId}
-              onChange={(e) => setExamId(e.target.value)}
-            />
-            <button 
-              className="btn btn-primary" 
-              type="button" 
-              onClick={handleStartExam}
-              disabled={loading}
-            >
-              {loading ? 'Fetching...' : 'Start Exam'}
-            </button>
+      <div className="row justify-content-center">
+        <div className="col-md-8">
+          <div className="text-center mb-5">
+            <h2 className="fw-bold">Student Portal</h2>
+            <p className="text-muted">Enter your exam ID to begin your assessment.</p>
           </div>
-          
-          {error && <div className="alert alert-danger">{error}</div>}
 
-          {exam && (
-            <div className="mt-4 p-3 border rounded bg-light">
-              <h4>Ready for: {exam.title}</h4>
-              <p>{exam.questions.length} questions will be presented.</p>
-              <button className="btn btn-success" onClick={startTakingExam}>Begin Now</button>
+          <div className="card shadow-sm border-0 overflow-hidden">
+            <div className="card-body p-4">
+              <div className="input-group input-group-lg mb-3">
+                <input
+                  type="text"
+                  className="form-control border-primary"
+                  placeholder="Enter Exam ID (e.g., 1)"
+                  value={examId}
+                  onChange={(e) => setExamId(e.target.value)}
+                />
+                <button 
+                  className="btn btn-primary px-4" 
+                  type="button" 
+                  onClick={handleStartExam}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <span className="spinner-border spinner-border-sm" role="status"></span>
+                  ) : 'Find Exam'}
+                </button>
+              </div>
+              
+              {error && <div className="alert alert-danger mt-3">{error}</div>}
+
+              {exam && !isExamStarted && (
+                <div className="mt-4 p-4 border-start border-4 border-success bg-light rounded shadow-sm animate__animated animate__fadeIn">
+                  <h4 className="fw-bold text-success mb-2">{exam.title}</h4>
+                  <div className="d-flex gap-3 mb-4 text-muted">
+                    <span><i className="bi bi-question-circle me-1"></i> {exam.questions.length} Questions</span>
+                    <span><i className="bi bi-clock me-1"></i> Self-paced</span>
+                  </div>
+                  
+                  {exam.password && (
+                    <div className="mb-3">
+                      <label className="form-label fw-bold small text-uppercase text-muted">This exam is password protected</label>
+                      <input 
+                        type="password" 
+                        className={`form-control ${passwordError ? 'is-invalid' : ''}`}
+                        placeholder="Enter password to start"
+                        value={enteredPassword}
+                        onChange={(e) => {
+                          setEnteredPassword(e.target.value);
+                          setPasswordError('');
+                        }}
+                      />
+                      {passwordError && <div className="invalid-feedback">{passwordError}</div>}
+                    </div>
+                  )}
+
+                  <button className="btn btn-success btn-lg w-100 fw-bold" onClick={startTakingExam}>
+                    Start Exam Now
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,21 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { examService } from '../api/examService';
+import ExamForm from './teacher/ExamForm';
+import ExamList from './teacher/ExamList';
+import ExamPreview from './teacher/ExamPreview';
 
-// רכיב הדשבורד של המורה.
 const TeacherDashboard = () => {
+  const [view, setView] = useState('home'); // 'home', 'list', 'form', 'preview'
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
-  
-  // New Exam Form State
-  const [newExam, setNewExam] = useState({
-    title: '',
-    questions: [
-      { id: 'q1', text: '', options: ['', '', '', ''], correctAnswer: '' }
-    ]
-  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [editExamId, setEditExamId] = useState(null);
+  const [previewExam, setPreviewExam] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
-  // פונקציה אסינכרונית לבקש ולעדכן המבחנים ברכיב.
+  // אובייקט הבחינה ההתחלתית.
+  const initialExamState = {
+    title: '',
+    password: '',
+    questions: [
+      { id: 'q1', type: 'multiple-choice', text: '', options: ['', '', '', ''], correctAnswer: '' }
+    ]
+  };
+  const [formData, setFormData] = useState(initialExamState);
+
+  // טעינת המבחנים
   const fetchExams = async () => {
     setLoading(true);
     try {
@@ -28,161 +36,207 @@ const TeacherDashboard = () => {
     }
   };
 
-  // רץ רק אחרי שהרכיב נטען.
+  // אחרי טעינת הרכיב הזה המבחנים נטענים.
   useEffect(() => {
     fetchExams();
   }, []);
 
-  // פונקציה של הוספת שאלה.
-  const handleAddQuestion = () => {
-    setNewExam(prev => ({
-      ...prev,
-      questions: [
-        ...prev.questions,
-        { id: `q${prev.questions.length + 1}`, text: '', options: ['', '', '', ''], correctAnswer: '' }
-      ]
-    }));
+  // פונקציה לאמת הטופס של הבחינה.
+  const validateForm = () => {
+    if (!formData.title.trim()) return "Exam title is required";
+    for (let i = 0; i < formData.questions.length; i++) {
+      const q = formData.questions[i];
+      if (!q.text.trim()) return `Question ${i + 1} text is required`;
+      if (q.type === 'multiple-choice' || q.type === 'true-false') {
+        if (!q.correctAnswer) return `Question ${i + 1} requires a correct answer selection`;
+      } else if (q.type === 'multiple-response') {
+        if (!q.correctAnswer || q.correctAnswer.length === 0) 
+          return `Question ${i + 1} requires at least one correct answer`;
+      } else if (q.type === 'written') {
+        if (!q.correctAnswer.trim()) return `Question ${i + 1} requires a sample correct answer`;
+      }
+    }
+    return null;
   };
 
-  // פונקציה של עדכון השאלה.
-  const handleQuestionChange = (index, field, value) => {
-    const updatedQuestions = [...newExam.questions];
-    updatedQuestions[index][field] = value;
-    setNewExam(prev => ({ ...prev, questions: updatedQuestions }));
-  };
-
-  // פונקציה של שינוי בחירת תשובה.
-  const handleOptionChange = (qIndex, oIndex, value) => {
-    const updatedQuestions = [...newExam.questions];
-    updatedQuestions[qIndex].options[oIndex] = value;
-    setNewExam(prev => ({ ...prev, questions: updatedQuestions }));
-  };
-
-  // פונקציה של ייצור בחינה.
-  const handleCreateExam = async (e) => {
+  // פונקציית שמירת המבחן.
+  const handleSaveExam = async (e) => {
+    // ללא טעינת הדף מחדש.
     e.preventDefault();
+    const error = validateForm();
+    if (error) {
+      alert(error);
+      return;
+    }
+
     try {
-      await examService.createExam(newExam);
-      setShowAddForm(false);
-      setNewExam({
-        title: '',
-        questions: [{ id: 'q1', text: '', options: ['', '', '', ''], correctAnswer: '' }]
-      });
+      if (isEditing) {
+        await examService.updateExam(editExamId, formData);
+      } else {
+        await examService.createExam(formData);
+      }
+      resetToHome();
       fetchExams();
     } catch (error) {
-      alert("Failed to create exam");
+      alert(`Failed to ${isEditing ? 'update' : 'create'} exam`);
     }
   };
 
-  // הצגת הרכיב.
-  return (
-    <div className="container mt-4">
-      <div className="d-flex justify-content-between align-items-center">
-        <h2>Teacher Dashboard</h2>
-        <button 
-          className={`btn ${showAddForm ? 'btn-secondary' : 'btn-success'}`}
-          onClick={() => setShowAddForm(!showAddForm)}
-        >
-          {showAddForm ? 'Cancel' : 'Add New Exam'}
-        </button>
-      </div>
+  // פונקציה אסינכרונית לטפל בלחיצה על כפתור עריכה של המבחן.
+  const handleEditClick = async (id) => {
+    try {
+      const exam = await examService.getExamById(id);
+      setFormData(exam);
+      setEditExamId(id);
+      setIsEditing(true);
+      setView('form');
+    } catch (error) {
+      alert("Failed to load exam for editing");
+    }
+  };
 
-      // טופס הוספת המבחן.
-      {showAddForm && (
-        <div className="card shadow-sm mt-3">
-          <div className="card-body">
-            <h5 className="card-title">Create New Exam</h5>
-            <form onSubmit={handleCreateExam}>
-              <div className="mb-3">
-                <label className="form-label">Exam Title</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  value={newExam.title} 
-                  onChange={(e) => setNewExam({...newExam, title: e.target.value})}
-                  required 
-                />
-              </div>
-              
-              <h6>Questions</h6>
-              {newExam.questions.map((q, qIndex) => (
-                <div key={qIndex} className="border p-3 mb-3 rounded">
-                  <div className="mb-2">
-                    <label className="form-label">Question {qIndex + 1}</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      value={q.text} 
-                      onChange={(e) => handleQuestionChange(qIndex, 'text', e.target.value)}
-                      required 
-                    />
-                  </div>
-                  <div className="row g-2">
-                    {q.options.map((opt, oIndex) => (
-                      <div key={oIndex} className="col-md-6">
-                        <input 
-                          type="text" 
-                          className="form-control form-control-sm" 
-                          placeholder={`Option ${oIndex + 1}`}
-                          value={opt} 
-                          onChange={(e) => handleOptionChange(qIndex, oIndex, e.target.value)}
-                          required 
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-2">
-                    <label className="form-label small text-muted">Correct Answer</label>
-                    <select 
-                      className="form-select form-select-sm" 
-                      value={q.correctAnswer} 
-                      onChange={(e) => handleQuestionChange(qIndex, 'correctAnswer', e.target.value)}
-                      required
-                    >
-                      <option value="">Select correct option</option>
-                      {q.options.map((opt, oIndex) => (
-                        <option key={oIndex} value={opt}>{opt || `Option ${oIndex + 1}`}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              ))}
-              
-              <div className="d-flex gap-2">
-                <button type="button" className="btn btn-outline-primary btn-sm" onClick={handleAddQuestion}>
-                  + Add Question
-                </button>
-                <button type="submit" className="btn btn-primary btn-sm">
-                  Save Exam
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+  // פונקציה אסינכרונית למחיקת הבחינה.
+  const handleDeleteExam = async (id) => {
+    try {
+      await examService.deleteExam(id);
+      setDeletingId(null);
+      fetchExams();
+    } catch (error) {
+      alert("Failed to delete exam");
+    }
+  };
 
-      // הצגת המבחנים.
-      <div className="card shadow-sm mt-3">
-        <div className="card-body">
-          <h5 className="card-title">Manage Existing Exams</h5>
-          {loading ? (
-            <p>Loading exams...</p>
-          ) : (
-            <div className="list-group mt-3">
-              {exams.map(exam => (
-                <div key={exam.id} className="list-group-item d-flex justify-content-between align-items-center">
-                  <div>
-                    <strong>{exam.title}</strong>
-                    <br />
-                    <small className="text-muted">{exam.questions.length} Questions</small>
-                  </div>
-                  <span className="badge bg-primary rounded-pill">ID: {exam.id}</span>
-                </div>
-              ))}
+  // פוקציה אסינכרונית ללחיצה על כפתור התצוגה הקודמת.
+  const handlePreviewClick = async (id) => {
+    try {
+      const exam = await examService.getExamById(id);
+      setPreviewExam(exam);
+      setView('preview');
+    } catch (error) {
+      alert("Failed to load exam for preview");
+    }
+  };
+
+  // פונקצייה לחזור לדף ראשי.
+  const resetToHome = () => {
+    setView('home');
+    setIsEditing(false);
+    setEditExamId(null);
+    setFormData(initialExamState);
+    setPreviewExam(null);
+    setDeletingId(null);
+  };
+
+  // פונקצייה לטעינת הרכיב לפי view.
+  const renderContent = () => {
+    switch (view) {
+      case 'form':
+        return (
+          <ExamForm 
+            formData={formData} 
+            setFormData={setFormData} 
+            isEditing={isEditing} 
+            onSave={handleSaveExam} 
+            onCancel={resetToHome} 
+          />
+        );
+      case 'list':
+        return (
+          <div className="animate__animated animate__fadeIn">
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h3 className="fw-bold text-dark">Manage Existing Exams</h3>
+              <button className="btn btn-secondary px-4" onClick={resetToHome}>Back to Menu</button>
             </div>
-          )}
-        </div>
+            <ExamList 
+              exams={exams} 
+              loading={loading} 
+              onEdit={handleEditClick} 
+              onDelete={handleDeleteExam} 
+              onPreview={handlePreviewClick} 
+              deletingId={deletingId} 
+              setDeletingId={setDeletingId} 
+            />
+          </div>
+        );
+      case 'preview':
+        return (
+          <ExamPreview 
+            previewExam={previewExam} 
+            onBack={() => setView('list')} 
+            onEdit={handleEditClick} 
+          />
+        );
+      default:
+        return (
+          <div className="row g-4 mt-2 justify-content-center animate__animated animate__fadeIn">
+            <div className="col-md-5">
+              <div className="card h-100 shadow-sm border-0 text-center p-4 hover-lift transition-all">
+                <div className="card-body">
+                  <div className="display-4 text-primary mb-3">
+                    <i className="bi bi-plus-circle-dotted"></i>
+                  </div>
+                  <h4 className="fw-bold">Create New Exam</h4>
+                  <p className="text-muted">Design a new assessment with multiple question types and automatic grading.</p>
+                  <button className="btn btn-primary btn-lg w-100 mt-3 fw-bold" onClick={() => setView('form')}>
+                    Launch Creator
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="col-md-5">
+              <div className="card h-100 shadow-sm border-0 text-center p-4 hover-lift transition-all">
+                <div className="card-body">
+                  <div className="display-4 text-info mb-3">
+                    <i className="bi bi-collection"></i>
+                  </div>
+                  <h4 className="fw-bold">Manage Exams</h4>
+                  <p className="text-muted">View, edit, or remove your existing exams. You can also preview how they look for students.</p>
+                  <button className="btn btn-info btn-lg w-100 mt-3 text-white fw-bold" onClick={() => setView('list')}>
+                    View All Exams
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="col-md-10 mt-5">
+              <div className="card border-0 bg-light p-4 rounded-4">
+                <div className="d-flex align-items-center justify-content-around text-center">
+                  <div>
+                    <h2 className="fw-bold text-primary mb-0">{exams.length}</h2>
+                    <small className="text-muted text-uppercase fw-bold">Active Exams</small>
+                  </div>
+                  <div className="vr opacity-10"></div>
+                  <div>
+                    <h2 className="fw-bold text-success mb-0">98%</h2>
+                    <small className="text-muted text-uppercase fw-bold">Avg. Completion</small>
+                  </div>
+                  <div className="vr opacity-10"></div>
+                  <div>
+                    <h2 className="fw-bold text-warning mb-0">12</h2>
+                    <small className="text-muted text-uppercase fw-bold">Recent Submissions</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="container mt-2">
+      <div className="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+        <h2 className="fw-bold mb-0">Teacher Dashboard</h2>
+        {view !== 'home' && (
+          <nav aria-label="breadcrumb">
+            <ol className="breadcrumb mb-0">
+              <li className="breadcrumb-item"><a href="#" onClick={(e) => { e.preventDefault(); resetToHome(); }}>Dashboard</a></li>
+              <li className="breadcrumb-item active" aria-current="page">{view.charAt(0).toUpperCase() + view.slice(1)}</li>
+            </ol>
+          </nav>
+        )}
       </div>
+
+      {renderContent()}
     </div>
   );
 };
