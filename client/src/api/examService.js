@@ -46,5 +46,10 @@ export const examService = {
     await delay(500);
     mockDb.studentScores.push(scoreData);
     return { success: true };
+  },
+  // מחזירה את כל ההגשוש
+  getAllSubmissions: async () => {
+    await delay(500);
+    return [...mockDb.studentScores];
   }
 };

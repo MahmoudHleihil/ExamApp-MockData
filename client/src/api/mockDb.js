@@ -56,5 +56,24 @@ export const mockDb = {
       ]
     }
   ],
-  studentScores: []
+  studentScores: [
+    {
+      id: "s1",
+      examId: "1",
+      examTitle: "React Fundamentals",
+      score: 85,
+      studentName: "John Doe",
+      date: "2023-10-27T10:00:00.000Z",
+      answers: { "q1": "A syntax extension for JavaScript", "q2": "useEffect" }
+    },
+    {
+      id: "s2",
+      examId: "demo",
+      examTitle: "Full-Stack Web Mastery",
+      score: 100,
+      studentName: "Jane Smith",
+      date: "2023-10-27T11:30:00.000Z",
+      answers: { "d1": "Django", "d2": "False", "d3": ["GET", "POST", "DELETE"], "d4": "Cascading Style Sheets" }
+    }
+  ]
 };
