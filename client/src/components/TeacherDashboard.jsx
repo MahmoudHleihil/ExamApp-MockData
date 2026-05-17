@@ -12,7 +12,8 @@ const TeacherDashboard = () => {
   const [editExamId, setEditExamId] = useState(null);
   const [previewExam, setPreviewExam] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
-  
+
+  // אובייקט הבחינה ההתחלתית.
   const initialExamState = {
     title: '',
     password: '',
@@ -22,6 +23,7 @@ const TeacherDashboard = () => {
   };
   const [formData, setFormData] = useState(initialExamState);
 
+  // טעינת המבחנים
   const fetchExams = async () => {
     setLoading(true);
     try {
@@ -34,10 +36,12 @@ const TeacherDashboard = () => {
     }
   };
 
+  // אחרי טעינת הרכיב הזה המבחנים נטענים.
   useEffect(() => {
     fetchExams();
   }, []);
 
+  // פונקציה לאמת הטופס של הבחינה.
   const validateForm = () => {
     if (!formData.title.trim()) return "Exam title is required";
     for (let i = 0; i < formData.questions.length; i++) {
@@ -55,7 +59,9 @@ const TeacherDashboard = () => {
     return null;
   };
 
+  // פונקציית שמירת המבחן.
   const handleSaveExam = async (e) => {
+    // ללא טעינת הדף מחדש.
     e.preventDefault();
     const error = validateForm();
     if (error) {
@@ -76,6 +82,7 @@ const TeacherDashboard = () => {
     }
   };
 
+  // פונקציה אסינכרונית לטפל בלחיצה על כפתור עריכה של המבחן.
   const handleEditClick = async (id) => {
     try {
       const exam = await examService.getExamById(id);
@@ -88,6 +95,7 @@ const TeacherDashboard = () => {
     }
   };
 
+  // פונקציה אסינכרונית למחיקת הבחינה.
   const handleDeleteExam = async (id) => {
     try {
       await examService.deleteExam(id);
@@ -98,6 +106,7 @@ const TeacherDashboard = () => {
     }
   };
 
+  // פוקציה אסינכרונית ללחיצה על כפתור התצוגה הקודמת.
   const handlePreviewClick = async (id) => {
     try {
       const exam = await examService.getExamById(id);
@@ -108,6 +117,7 @@ const TeacherDashboard = () => {
     }
   };
 
+  // פונקצייה לחזור לדף ראשי.
   const resetToHome = () => {
     setView('home');
     setIsEditing(false);
@@ -117,6 +127,7 @@ const TeacherDashboard = () => {
     setDeletingId(null);
   };
 
+  // פונקצייה לטעינת הרכיב לפי view.
   const renderContent = () => {
     switch (view) {
       case 'form':

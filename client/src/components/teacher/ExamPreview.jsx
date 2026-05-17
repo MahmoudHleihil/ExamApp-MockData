@@ -1,5 +1,6 @@
 import React from 'react';
 
+// רכיב תצוגה מקדימה של המבחן(המורה).
 const ExamPreview = ({ previewExam, onBack, onEdit }) => {
   return (
     <div className="container mt-4 animate__animated animate__fadeIn">

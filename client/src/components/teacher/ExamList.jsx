@@ -1,6 +1,8 @@
 import React from 'react';
 
+// רכיב של רשימת המבחנים.
 const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, deletingId, setDeletingId }) => {
+  // אם השאלות עדיין לא נטענו אז זה מוצג.
   if (loading) {
     return (
       <div className="text-center py-5">
@@ -12,6 +14,7 @@ const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, deletingId, set
     );
   }
 
+  // רשימת המבחנים.
   return (
     <div className="card shadow-sm border-0 animate__animated animate__fadeIn">
       <div className="card-body p-0">
@@ -38,6 +41,7 @@ const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, deletingId, set
                     <code className="bg-light p-1 rounded text-muted small">{exam.id}</code>
                   </td>
                   <td className="text-end pe-4">
+                    {/* אם אנחנו במהלך מחיקת המבחן הזה אז שני Confirm Delete ו Cancel מוצגות, אחרת Preview, Edit ו Delete מוצג*/}
                     {deletingId === exam.id ? (
                       <div className="btn-group btn-group-sm animate__animated animate__pulse">
                         <button 
@@ -81,6 +85,7 @@ const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, deletingId, set
                   </td>
                 </tr>
               ))}
+              {/* אם אין מבחנים אז זה מיוצג */}
               {exams.length === 0 && (
                 <tr>
                   <td colSpan="4" className="text-center py-5 text-muted">

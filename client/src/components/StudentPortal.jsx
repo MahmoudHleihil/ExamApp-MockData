@@ -16,6 +16,7 @@ const StudentPortal = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [finalResult, setFinalResult] = useState(null);
 
+  // פונקציית חיפוש על הבחינה לפי Id.
   const handleStartExam = async () => {
     if (!examId) return;
     setLoading(true);
@@ -35,7 +36,9 @@ const StudentPortal = () => {
     }
   };
 
+  // פונקציית תחילת הבחינה.
   const startTakingExam = () => {
+    // בדיקת הסיסמה.
     if (exam.password && enteredPassword !== exam.password) {
       setPasswordError('Incorrect password. Please try again.');
       return;
@@ -46,6 +49,7 @@ const StudentPortal = () => {
     setIsSubmitted(false);
   };
 
+  // פונקציה של שינוי התשובה של השאלה.
   const handleAnswerChange = (questionId, answer, type) => {
     if (type === 'multiple-response') {
       setSelectedAnswers(prev => {
@@ -64,8 +68,11 @@ const StudentPortal = () => {
     }
   };
 
+  // חישוב ציון המבחן.
   const calculateScore = () => {
     let totalPoints = 0;
+
+    // הוספת נקודה אחת לכל תשובה נכונה.
     exam.questions.forEach(q => {
       const studentAns = selectedAnswers[q.id];
       const correctAns = q.correctAnswer;
@@ -90,11 +97,15 @@ const StudentPortal = () => {
         }
       }
     });
+
+    // חישוב והחזרת הציון.
     return (totalPoints / exam.questions.length) * 100;
   };
 
+  // פונקציית הגשת המבחן.
   const handleSubmitExam = async () => {
     const score = calculateScore();
+    // יצירת אובייקט התוצאה.
     const result = {
       examId: exam.id,
       examTitle: exam.title,
@@ -104,6 +115,7 @@ const StudentPortal = () => {
       answers: selectedAnswers
     };
 
+    // הגשת התוצאה.
     try {
       await examService.submitScore(result);
       setFinalResult(result);
@@ -114,6 +126,7 @@ const StudentPortal = () => {
     }
   };
 
+  // תצוגת השאלה עם התשובה הנבחרת.
   const renderQuestionInput = (question) => {
     switch (question.type) {
       case 'multiple-choice':
@@ -167,6 +180,7 @@ const StudentPortal = () => {
     }
   };
 
+  // אחרי הגשת המבחן וקבלת הציון.
   if (isSubmitted && finalResult) {
     return (
       <div className="container mt-4 text-center">
@@ -204,8 +218,11 @@ const StudentPortal = () => {
     );
   }
 
+  // המבחן התחיל.
   if (isExamStarted && exam) {
+    // השאלה הנוכחית.
     const question = exam.questions[currentQuestionIndex];
+    // אחוז ההתקדמות במבחן.
     const progress = ((currentQuestionIndex + 1) / exam.questions.length) * 100;
 
     return (

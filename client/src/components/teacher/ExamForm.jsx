@@ -1,5 +1,6 @@
 import React from 'react';
 
+// רשימת הטיפוסים של השאלות של המבחנים
 const QUESTION_TYPES = [
   { value: 'multiple-choice', label: 'Multiple Choice' },
   { value: 'true-false', label: 'True/False' },
@@ -7,8 +8,11 @@ const QUESTION_TYPES = [
   { value: 'multiple-response', label: 'Multiple Response' }
 ];
 
+// רכיב טופס עריכת מבחנים קיימים או הוספת מבחנים חדשים.
 const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
+  // פןנקציית הוספת שאלה חדשה לטופס.
   const handleAddQuestion = () => {
+    // מוסיף שאלה חדשה ריקה לסוף רשימת השאלות ומעדכן את טופס אחר כך.
     setFormData(prev => ({
       ...prev,
       questions: [
@@ -24,15 +28,19 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
     }));
   };
 
+  // פונקציית מחיקת שאלה לפי אינדקס מהטופס.
   const handleRemoveQuestion = (index) => {
     const updatedQuestions = formData.questions.filter((_, i) => i !== index);
+    // מעדכנים הטופס אחרי מחיקת השאלה.
     setFormData(prev => ({ ...prev, questions: updatedQuestions }));
   };
 
+  // פונקציה משנה את טיפוס השאלה בטופס.
   const handleQuestionChange = (index, field, value) => {
     const updatedQuestions = [...formData.questions];
-    updatedQuestions[index][field] = value;
+    updatedQuestions[index][field] = value; 
     
+    // עדכון השאלה לפי טיפוס.
     if (field === 'type') {
       if (value === 'true-false') {
         updatedQuestions[index].options = ['True', 'False'];
@@ -49,9 +57,11 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
       }
     }
     
+    // עדכון השאלה בטופס.
     setFormData(prev => ({ ...prev, questions: updatedQuestions }));
   };
 
+  // פונקציה שמעדכנת שינוי בשאלה.
   const handleOptionChange = (qIndex, oIndex, value) => {
     const updatedQuestions = [...formData.questions];
     const oldOptionValue = updatedQuestions[qIndex].options[oIndex];
@@ -67,9 +77,11 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
       updatedQuestions[qIndex].correctAnswer = value;
     }
     
+    // עדכון הטופס.
     setFormData(prev => ({ ...prev, questions: updatedQuestions }));
   };
 
+  // פונקציה שמעדכנת הוספת או הסרת האופציה הנכונה בשאלה.
   const handleToggleCorrectAnswer = (qIndex, option) => {
     const updatedQuestions = [...formData.questions];
     const currentAnswers = Array.isArray(updatedQuestions[qIndex].correctAnswer) 
