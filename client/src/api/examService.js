@@ -51,5 +51,25 @@ export const examService = {
   getAllSubmissions: async () => {
     await delay(500);
     return [...mockDb.studentScores];
+  },
+
+  // פונקציה אסינכרונית לעדכון משוב ההגשה
+  updateSubmissionFeedback: async (submissionId, feedback, questionFeedback, isFeedbackVisible) => {
+    await delay(500);
+    const index = mockDb.studentScores.findIndex(s => s.id === submissionId);
+    if (index === -1) throw new Error('Submission not found');
+    mockDb.studentScores[index] = { 
+      ...mockDb.studentScores[index], 
+      feedback, 
+      questionFeedback,
+      isFeedbackVisible 
+    };
+    return mockDb.studentScores[index];
+  },
+
+  // פונקציה אסינכרונית שמחזירה את ההגשות של הסטודנט
+  getSubmissionsByStudent: async (studentName) => {
+    await delay(500);
+    return mockDb.studentScores.filter(s => s.studentName === studentName);
   }
 };

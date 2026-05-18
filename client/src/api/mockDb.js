@@ -62,9 +62,12 @@ export const mockDb = {
       examId: "1",
       examTitle: "React Fundamentals",
       score: 85,
-      studentName: "John Doe",
+      studentName: "Student User",
       date: "2023-10-27T10:00:00.000Z",
-      answers: { "q1": "A syntax extension for JavaScript", "q2": "useEffect" }
+      answers: { "q1": "A syntax extension for JavaScript", "q2": "useEffect" },
+      feedback: "Great job on the fundamentals!",
+      questionFeedback: { "q1": "Perfect!", "q2": "Well explained." },
+      isFeedbackVisible: true
     },
     {
       id: "s2",
@@ -73,7 +76,10 @@ export const mockDb = {
       score: 100,
       studentName: "Jane Smith",
       date: "2023-10-27T11:30:00.000Z",
-      answers: { "d1": "Django", "d2": "False", "d3": ["GET", "POST", "DELETE"], "d4": "Cascading Style Sheets" }
+      answers: { "d1": "Django", "d2": "False", "d3": ["GET", "POST", "DELETE"], "d4": "Cascading Style Sheets" },
+      feedback: "",
+      questionFeedback: {},
+      isFeedbackVisible: false
     }
   ]
 };
