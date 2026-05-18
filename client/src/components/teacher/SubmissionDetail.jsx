@@ -1,14 +1,53 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { examService } from '../../api/examService';
 
 // רכיב להצגת נתוני ההגשה
 const SubmissionDetail = ({ submission, exam, onBack }) => {
+  const [feedback, setFeedback] = useState(submission?.feedback || '');
+  const [questionFeedback, setQuestionFeedback] = useState(submission?.questionFeedback || {});
+  const [isFeedbackVisible, setIsFeedbackVisible] = useState(submission?.isFeedbackVisible || false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+
+  // בכל שינוי בהגשה טוענים אותה שוב
+  useEffect(() => {
+    setFeedback(submission?.feedback || '');
+    setQuestionFeedback(submission?.questionFeedback || {});
+    setIsFeedbackVisible(submission?.isFeedbackVisible || false);
+    setSaveMessage('');
+  }, [submission]);
+
   if (!submission || !exam) return null;
+
+  // פונקציה אסינכרונית לשמירת המשוב
+  const handleSaveFeedback = async () => {
+    setIsSaving(true);
+    setSaveMessage('');
+    try {
+      await examService.updateSubmissionFeedback(submission.id, feedback, questionFeedback, isFeedbackVisible);
+      setSaveMessage('Review released successfully!');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } catch (error) {
+      console.error("Failed to save feedback:", error);
+      setSaveMessage('Failed to release review.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // פונציה לשנות את המשוב על השאלה
+  const handleQuestionFeedbackChange = (qId, text) => {
+    setQuestionFeedback(prev => ({
+      ...prev,
+      [qId]: text
+    }));
+  };
 
   return (
     <div className="animate__animated animate__fadeIn">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h3 className="fw-bold text-dark mb-1">Submission Details</h3>
+          <h3 className="fw-bold text-dark mb-1">Marking Submission</h3>
           <p className="text-muted mb-0">{submission.studentName} - {exam.title}</p>
         </div>
         <button className="btn btn-outline-secondary px-4" onClick={onBack}>
@@ -19,7 +58,7 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
       <div className="row g-4 mb-4">
         <div className="col-md-3">
           <div className="card border-0 shadow-sm h-100 p-3 text-center">
-            <small className="text-uppercase text-muted fw-bold mb-2">Final Score</small>
+            <small className="text-uppercase text-muted fw-bold mb-2">Calculated Score</small>
             <h2 className={`display-5 fw-bold mb-0 ${submission.score >= 60 ? 'text-success' : 'text-danger'}`}>
               {submission.score.toFixed(0)}%
             </h2>
@@ -40,19 +79,76 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
         </div>
         <div className="col-md-3">
           <div className="card border-0 shadow-sm h-100 p-3 text-center">
-            <small className="text-uppercase text-muted fw-bold mb-2">Status</small>
+            <small className="text-uppercase text-muted fw-bold mb-2">Review Status</small>
             <h5 className="mt-2">
-              <span className={`badge rounded-pill px-4 py-2 ${submission.score >= 60 ? 'bg-success' : 'bg-danger'}`}>
-                {submission.score >= 60 ? 'Passed' : 'Failed'}
+              <span className={`badge rounded-pill px-4 py-2 ${isFeedbackVisible ? 'bg-success' : 'bg-warning'}`}>
+                {isFeedbackVisible ? 'Released' : 'Private'}
               </span>
             </h5>
           </div>
         </div>
       </div>
 
-      <div className="card border-0 shadow-sm overflow-hidden">
+      {/* Teacher Feedback Section */}
+      <div className="card border-0 shadow-sm mb-4 overflow-hidden">
+        <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+          <h5 className="fw-bold mb-0">General Review & Overall Feedback</h5>
+          {saveMessage && (
+            <span className={`badge ${saveMessage.includes('success') ? 'bg-success' : 'bg-danger'} animate__animated animate__fadeIn`}>
+              {saveMessage}
+            </span>
+          )}
+        </div>
+        <div className="card-body p-4 bg-light-subtle">
+          <div className="mb-3">
+            <label htmlFor="feedbackText" className="form-label fw-semibold">Overall Comments</label>
+            <textarea 
+              className="form-control border-0 shadow-sm" 
+              id="feedbackText" 
+              rows="3" 
+              placeholder="Enter your overall feedback here..."
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+            ></textarea>
+          </div>
+          <div className="d-flex justify-content-between align-items-center">
+            <div className="form-check form-switch">
+              {/* תיבת סימון לתת רשות לסטודנט לצפות במשוב */}
+              <input 
+                className="form-check-input" 
+                type="checkbox" 
+                role="switch" 
+                id="visibilitySwitch"
+                checked={isFeedbackVisible}
+                onChange={(e) => setIsFeedbackVisible(e.target.checked)}
+              />
+              <label className="form-check-label fw-medium" htmlFor="visibilitySwitch">
+                Release score and review to student
+              </label>
+            </div>
+            <button 
+              className="btn btn-success px-4 fw-bold shadow-sm" 
+              onClick={handleSaveFeedback}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-cloud-upload me-2"></i>Apply & Release
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="card border-0 shadow-sm overflow-hidden mb-5">
         <div className="card-header bg-white border-0 py-3">
-          <h5 className="fw-bold mb-0">Question Breakdown</h5>
+          <h5 className="fw-bold mb-0">Question Breakdown & Specific Feedback</h5>
         </div>
         <div className="card-body p-0">
           <div className="list-group list-group-flush">
@@ -84,7 +180,7 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
                   </div>
 
                   <div className="row g-3">
-                    <div className="col-md-6">
+                    <div className="col-md-4">
                       <div className="p-3 bg-light rounded-3 h-100 border-start border-4 border-primary">
                         <small className="text-uppercase text-muted fw-bold d-block mb-1">Student Answer</small>
                         <div className="fw-semibold text-dark">
@@ -92,12 +188,24 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
                         </div>
                       </div>
                     </div>
-                    <div className="col-md-6">
+                    <div className="col-md-4">
                       <div className="p-3 bg-light rounded-3 h-100 border-start border-4 border-success">
                         <small className="text-uppercase text-muted fw-bold d-block mb-1">Correct Answer</small>
                         <div className="fw-semibold text-dark">
                           {Array.isArray(correctAns) ? correctAns.join(', ') : correctAns}
                         </div>
+                      </div>
+                    </div>
+                    <div className="col-md-4">
+                      <div className="p-3 bg-white border rounded-3 h-100">
+                        <small className="text-uppercase text-muted fw-bold d-block mb-1 text-primary">Question Feedback</small>
+                        <textarea 
+                          className="form-control form-control-sm border-0 bg-transparent p-0" 
+                          rows="2" 
+                          placeholder="Specific feedback..."
+                          value={questionFeedback[q.id] || ''}
+                          onChange={(e) => handleQuestionFeedbackChange(q.id, e.target.value)}
+                        />
                       </div>
                     </div>
                   </div>
