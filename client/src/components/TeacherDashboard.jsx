@@ -5,6 +5,7 @@ import ExamList from './teacher/ExamList';
 import ExamPreview from './teacher/ExamPreview';
 import SubmissionList from './teacher/SubmissionList';
 import SubmissionDetail from './teacher/SubmissionDetail';
+import TeacherChatbot from './teacher/TeacherChatbot';
 import { mockDb } from '../api/mockDb';
 
 const TeacherDashboard = () => {
@@ -325,6 +326,15 @@ const TeacherDashboard = () => {
       </div>
 
       {renderContent()}
+      {/* רכיב הבוט  */}
+      <TeacherChatbot context={{
+        view,
+        examsCount: exams.length,
+        submissionsCount: submissions.length,
+        isEditing,
+        currentExamTitle: formData?.title,
+        selectedSubmissionStudent: selectedSubmission?.studentName
+      }} />
     </div>
   );
 };
