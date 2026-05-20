@@ -8,7 +8,7 @@ import SubmissionDetail from './teacher/SubmissionDetail';
 import TeacherChatbot from './teacher/TeacherChatbot';
 import { mockDb } from '../api/mockDb';
 
-const TeacherDashboard = () => {
+const TeacherDashboard = ({ user }) => {
   const [view, setView] = useState('home'); // 'home', 'list', 'form', 'preview', 'submissions', 'submission-detail'
   const [exams, setExams] = useState([]);
   const [submissions, setSubmissions] = useState([]);
