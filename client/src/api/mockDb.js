@@ -1,4 +1,35 @@
 export const mockDb = {
+  // רשימת משתמשים
+  users: [
+    {
+      id: "u1",
+      email: "admin@etest.com",
+      password: "$2a$10$TtVDG/.tdNP/vIEScg0pBeDwg3ujMCCp2kdmeLurR/YpOeiGEgKwu",
+      role: "Admin",
+      fullName: "System Admin",
+      isSuperAdmin: true,
+      status: "active"
+    },
+    {
+      id: "u2",
+      email: "teacher@etest.com",
+      password: "$2a$10$TtVDG/.tdNP/vIEScg0pBeDwg3ujMCCp2kdmeLurR/YpOeiGEgKwu",
+      role: "Teacher",
+      fullName: "Professor Smith",
+      exams: ["1", "demo"],
+      status: "active"
+    },
+    {
+      id: "u3",
+      email: "student@etest.com",
+      password: "$2a$10$TtVDG/.tdNP/vIEScg0pBeDwg3ujMCCp2kdmeLurR/YpOeiGEgKwu",
+      role: "Student",
+      fullName: "John Doe",
+      submissions: ["s1"],
+      scores: [85],
+      status: "active"
+    }
+  ],
   exams: [
     {
       id: "1",
@@ -23,7 +54,7 @@ export const mockDb = {
     {
       id: "demo",
       title: "Full-Stack Web Mastery",
-      password: "123",
+      password: "$2a$10$wOQ/bZzkqylNMsI8gavw1OhhY2DNYi/3Jrwa0uwEUUFD3xOsgNOGu",
       questions: [
         {
           id: "d1",
