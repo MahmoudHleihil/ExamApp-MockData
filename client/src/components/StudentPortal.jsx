@@ -7,7 +7,7 @@ import ExamResult from './student/ExamResult';
 import FeedbackList from './student/FeedbackList';
 import FeedbackDetail from './student/FeedbackDetail';
 
-const StudentPortal = () => {
+const StudentPortal = ({ user }) => {
   const [activeTab, setActiveTab] = useState('take-exam'); // 'take-exam', 'my-feedback'
   const [examId, setExamId] = useState('');
   const [exam, setExam] = useState(null);
@@ -30,7 +30,7 @@ const StudentPortal = () => {
   const [feedbackExam, setFeedbackExam] = useState(null);
   const [showFullReview, setShowFullReview] = useState(false);
 
-  const studentName = 'Student User'; // Simulated logged in student
+  const studentName = user?.fullName || 'Student User'; 
 
   const fetchStudentSubmissions = async () => {
     setFeedbackLoading(true);
