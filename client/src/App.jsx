@@ -7,6 +7,7 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
+import NotificationCenter from './components/NotificationCenter';
 import { userService } from './api/userService';
 
 function App() {
@@ -125,7 +126,7 @@ function App() {
     );
   }
 
-  // אחרי שנכנסנו לחבון שלנו
+  // אחרי שנכנסנו לחשבון שלנו
   return (
     <div className="container py-4">
       <header className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom shadow-none">
@@ -134,6 +135,10 @@ function App() {
           <small className="text-muted">Welcome, <span className="text-dark fw-bold">{user.fullName}</span></small>
         </div>
         <div className="d-flex align-items-center">
+          {/* Notifications */}
+          <div className="me-3">
+            <NotificationCenter user={user} />
+          </div>
           <div className="text-end me-3">
             <span className={`badge ${user.role === 'Admin' ? 'bg-danger' : user.role === 'Teacher' ? 'bg-success' : 'bg-info'} d-block mb-1`}>{user.role}</span>
             <span className="text-muted extra-small" style={{ fontSize: '0.75rem' }}>{user.email}</span>

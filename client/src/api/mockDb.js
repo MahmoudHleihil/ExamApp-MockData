@@ -112,5 +112,17 @@ export const mockDb = {
       questionFeedback: {},
       isFeedbackVisible: false
     }
+  ],
+  notifications: [
+    {
+      id: '1',
+      userId: 'admin-id',
+      role: 'Admin',
+      title: 'New Teacher Registration',
+      message: 'A new teacher has registered and is awaiting approval.',
+      time: new Date(Date.now() - 3600000).toISOString(),
+      read: false,
+      type: 'approval'
+    }
   ]
 };

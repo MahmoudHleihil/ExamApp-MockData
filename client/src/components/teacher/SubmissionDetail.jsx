@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { examService } from '../../api/examService';
+import { notificationService } from '../../api/notificationService';
 
 // רכיב להצגת נתוני ההגשה
 const SubmissionDetail = ({ submission, exam, onBack }) => {
@@ -60,6 +61,17 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
     const finalScore = calculateScore();
     try {
       await examService.updateSubmissionFeedback(submission.id, feedback, questionFeedback, isFeedbackVisible, finalScore);
+      
+      // If the review is released, notify the student
+      if (isFeedbackVisible) {
+        notificationService.addNotification({
+          studentName: submission.studentName, // Used for routing if userId isn't available
+          title: 'Feedback Released',
+          message: `Your results for "${exam.title}" are now available. Score: ${finalScore.toFixed(0)}%`,
+          type: 'feedback'
+        });
+      }
+
       setSaveMessage('Review released successfully!');
       setTimeout(() => setSaveMessage(''), 3000);
     } catch (error) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { userService } from '../api/userService';
 import { examService } from '../api/examService';
+import { notificationService } from '../api/notificationService';
 
 const AdminDashboard = ({ user }) => {
   const [stats, setStats] = useState(null);
@@ -41,7 +42,19 @@ const AdminDashboard = ({ user }) => {
   // פונקציה אסינכרונית לאשר החשבון של המורה
   const handleApprove = async (userId) => {
     try {
+      const targetUser = users.find(u => u.id === userId);
       await userService.approveUser(userId);
+      
+      // Notify the teacher that their account has been approved
+      if (targetUser) {
+        notificationService.addNotification({
+          userId: userId,
+          title: 'Account Approved',
+          message: 'Welcome! Your teacher account has been approved by the administrator.',
+          type: 'approval'
+        });
+      }
+
       fetchData();
     } catch (err) {
       alert('Approval failed');
@@ -81,6 +94,15 @@ const AdminDashboard = ({ user }) => {
     if (window.confirm(`Are you sure you want to delete ${targetUser.fullName}?`)) {
       try {
         await userService.deleteUser(targetUser.id);
+        
+        // Notify admins about the deletion
+        notificationService.addNotification({
+          role: 'Admin',
+          title: 'User Deleted',
+          message: `The user ${targetUser.fullName} (${targetUser.role}) was removed from the system by ${user.fullName}.`,
+          type: 'deletion'
+        });
+
         fetchData();
       } catch (err) {
         alert(err.message);
