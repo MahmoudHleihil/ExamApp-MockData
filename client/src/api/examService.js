@@ -69,7 +69,7 @@ export const examService = {
   },
 
   // פונקציה אסינכרונית לעדכון משוב ההגשה
-  updateSubmissionFeedback: async (submissionId, feedback, questionFeedback, isFeedbackVisible) => {
+  updateSubmissionFeedback: async (submissionId, feedback, questionFeedback, isFeedbackVisible, score) => {
     logger.debug('Updating submission feedback', { submissionId });
     await delay(500);
     const index = mockDb.studentScores.findIndex(s => s.id === submissionId);
@@ -81,9 +81,10 @@ export const examService = {
       ...mockDb.studentScores[index], 
       feedback, 
       questionFeedback,
-      isFeedbackVisible 
+      isFeedbackVisible,
+      score: score !== undefined ? score : mockDb.studentScores[index].score
     };
-    logger.info('Submission feedback updated successfully', { submissionId, isFeedbackVisible });
+    logger.info('Submission feedback updated successfully', { submissionId, isFeedbackVisible, score });
     return mockDb.studentScores[index];
   },
 
