@@ -1,4 +1,5 @@
 import { mockDb } from './mockDb';
+import logger from '../utils/logger';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -16,6 +17,7 @@ export const examService = {
   },
 
   createExam: async (exam) => {
+    logger.debug('Creating new exam', { title: exam.title, teacherId: exam.teacherId });
     await delay(800);
     const newExam = {
       ...exam,
@@ -23,28 +25,41 @@ export const examService = {
       questions: exam.questions || []
     };
     mockDb.exams.push(newExam);
+    logger.info('Exam created successfully', { examId: newExam.id, title: newExam.title });
     return newExam;
   },
 
   updateExam: async (id, updatedExam) => {
+    logger.debug('Updating exam', { examId: id });
     await delay(800);
     const index = mockDb.exams.findIndex(e => e.id === id);
-    if (index === -1) throw new Error('Exam not found');
+    if (index === -1) {
+      logger.error('Update failed: Exam not found', { examId: id });
+      throw new Error('Exam not found');
+    }
     mockDb.exams[index] = { ...updatedExam, id };
+    logger.info('Exam updated successfully', { examId: id });
     return mockDb.exams[index];
   },
 
   deleteExam: async (id) => {
+    logger.debug('Deleting exam', { examId: id });
     await delay(500);
     const index = mockDb.exams.findIndex(e => e.id === id);
-    if (index === -1) throw new Error('Exam not found');
+    if (index === -1) {
+      logger.error('Delete failed: Exam not found', { examId: id });
+      throw new Error('Exam not found');
+    }
     mockDb.exams.splice(index, 1);
+    logger.info('Exam deleted successfully', { examId: id });
     return { success: true };
   },
 
   submitScore: async (scoreData) => {
+    logger.debug('Submitting exam score', { examId: scoreData.examId, studentName: scoreData.studentName });
     await delay(500);
     mockDb.studentScores.push(scoreData);
+    logger.info('Score submitted successfully', { examId: scoreData.examId, studentName: scoreData.studentName, score: scoreData.score });
     return { success: true };
   },
   // מחזירה את כל ההגשוש
@@ -54,16 +69,22 @@ export const examService = {
   },
 
   // פונקציה אסינכרונית לעדכון משוב ההגשה
-  updateSubmissionFeedback: async (submissionId, feedback, questionFeedback, isFeedbackVisible) => {
+  updateSubmissionFeedback: async (submissionId, feedback, questionFeedback, isFeedbackVisible, score) => {
+    logger.debug('Updating submission feedback', { submissionId });
     await delay(500);
     const index = mockDb.studentScores.findIndex(s => s.id === submissionId);
-    if (index === -1) throw new Error('Submission not found');
+    if (index === -1) {
+      logger.error('Feedback update failed: Submission not found', { submissionId });
+      throw new Error('Submission not found');
+    }
     mockDb.studentScores[index] = { 
       ...mockDb.studentScores[index], 
       feedback, 
       questionFeedback,
-      isFeedbackVisible 
+      isFeedbackVisible,
+      score: score !== undefined ? score : mockDb.studentScores[index].score
     };
+    logger.info('Submission feedback updated successfully', { submissionId, isFeedbackVisible, score });
     return mockDb.studentScores[index];
   },
 

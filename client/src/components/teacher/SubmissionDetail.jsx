@@ -19,12 +19,47 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
 
   if (!submission || !exam) return null;
 
+  // חישוב ציון המבחן.
+  const calculateScore = () => {
+    let totalPoints = 0;
+
+    // הוספת נקודה אחת לכל תשובה נכונה.
+    exam.questions.forEach(q => {
+      const studentAns = submission.answers[q.id];
+      const correctAns = q.correctAnswer;
+
+      if (q.type === 'multiple-response') {
+        // All correct options must be selected, and no incorrect ones
+        if (Array.isArray(studentAns) && Array.isArray(correctAns)) {
+          const isCorrect = studentAns.length === correctAns.length && 
+                          studentAns.every(val => correctAns.includes(val));
+          if (isCorrect) totalPoints++;
+        }
+      } else if (q.type === 'written') {
+        if (typeof studentAns === 'string' && typeof correctAns === 'string') {
+          if (studentAns.trim().toLowerCase() === correctAns.trim().toLowerCase()) {
+            totalPoints++;
+          }
+        }
+      } else {
+        // multiple-choice, true-false
+        if (studentAns === correctAns) {
+          totalPoints++;
+        }
+      }
+    });
+
+    // חישוב והחזרת הציון.
+    return (totalPoints / exam.questions.length) * 100;
+  };
+
   // פונקציה אסינכרונית לשמירת המשוב
   const handleSaveFeedback = async () => {
     setIsSaving(true);
     setSaveMessage('');
+    const finalScore = calculateScore();
     try {
-      await examService.updateSubmissionFeedback(submission.id, feedback, questionFeedback, isFeedbackVisible);
+      await examService.updateSubmissionFeedback(submission.id, feedback, questionFeedback, isFeedbackVisible, finalScore);
       setSaveMessage('Review released successfully!');
       setTimeout(() => setSaveMessage(''), 3000);
     } catch (error) {

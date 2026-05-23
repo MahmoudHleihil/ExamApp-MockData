@@ -118,49 +118,14 @@ const StudentPortal = ({ user }) => {
     }
   };
 
-  // חישוב ציון המבחן.
-  const calculateScore = () => {
-    let totalPoints = 0;
-
-    // הוספת נקודה אחת לכל תשובה נכונה.
-    exam.questions.forEach(q => {
-      const studentAns = selectedAnswers[q.id];
-      const correctAns = q.correctAnswer;
-
-      if (q.type === 'multiple-response') {
-        // All correct options must be selected, and no incorrect ones
-        if (Array.isArray(studentAns) && Array.isArray(correctAns)) {
-          const isCorrect = studentAns.length === correctAns.length && 
-                          studentAns.every(val => correctAns.includes(val));
-          if (isCorrect) totalPoints++;
-        }
-      } else if (q.type === 'written') {
-        if (typeof studentAns === 'string' && typeof correctAns === 'string') {
-          if (studentAns.trim().toLowerCase() === correctAns.trim().toLowerCase()) {
-            totalPoints++;
-          }
-        }
-      } else {
-        // multiple-choice, true-false
-        if (studentAns === correctAns) {
-          totalPoints++;
-        }
-      }
-    });
-
-    // חישוב והחזרת הציון.
-    return (totalPoints / exam.questions.length) * 100;
-  };
-
   // פונקציית הגשת המבחן.
   const handleSubmitExam = async () => {
-    const score = calculateScore();
     // יצירת אובייקט התוצאה.
     const result = {
       id: Math.random().toString(36).substr(2, 9),
       examId: exam.id,
       examTitle: exam.title,
-      score: score,
+      score: 0, // Score is initially 0 and will be calculated by the teacher
       studentName: studentName,
       date: new Date().toISOString(),
       answers: selectedAnswers,
