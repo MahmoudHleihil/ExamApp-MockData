@@ -1,0 +1,17 @@
+This is spec file that describes the app features and usecases.
+
+There are many features to this E-Test website application, which are:
+1. Login and Register features, where any user can login his account or create a new one in case he still didnt. when creating a new account the user can choose a role(teacher, student) if he chose teacher he would have to wait until his account gets approved by the admin to enter his account, while the student enters immediately after creating his account.
+2. remember me checkbox, to make the website remember the account after signing in, by saving account in the session storage. that keeps the account logged in even after closing the tab, until logging out.
+3. notifications bell, where the teacher can see updates about student submissions, students can see teacher feedback updates and admins can see approval requests updates and users removal updates.
+4. forgot password button, when logging in if the user forgot his password, he can reset it.
+5. In the student portal there is a taking exam feature, where the student can enter the exam id and the exam password if required then start the exam, and submit the exam after finishing it.
+6. After submitting the exam the student can go to My Feedback tab to check his submissions, and after the teacher finishes grading and writing feedback he can see his score and the teacher's feedback, also his exam details.
+7. Exam creator, where the teacher can create a new exam.
+8. Viewing exams, the teacher can preview, edit or delete any of the exams he created.
+9. View results, where the teacher can search and sort the submissions, and pin to top and view the submission details.
+10. Grading the submissions, while viewing submission details the teacher can add comment on the exam and its questiones, and release score and review to student then apply & release so students can see the feedback.
+11. Chatbot, the teacher can talk with the chatbot to help with creating and grading exams.
+12. Admins can delete students and teachers accounts, but only System Admin can delete the rest of admins accounts.
+13. Approve teachers, the admin can approve teachers.
+14. Invite New Admin, the System Admin can create new admin accounts so he can give to new admins.
