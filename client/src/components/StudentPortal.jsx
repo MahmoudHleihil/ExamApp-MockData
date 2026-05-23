@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { examService } from '../api/examService';
+import { notificationService } from '../api/notificationService';
 import PortalTabs from './student/PortalTabs';
 import ExamSearch from './student/ExamSearch';
 import ExamTaker from './student/ExamTaker';
@@ -137,6 +138,15 @@ const StudentPortal = ({ user }) => {
     // הגשת התוצאה.
     try {
       await examService.submitScore(result);
+      
+      // Notify the teacher about the new submission
+      notificationService.addNotification({
+        role: 'Teacher',
+        title: 'New Submission',
+        message: `${studentName} submitted their exam: ${exam.title}`,
+        type: 'submission'
+      });
+
       setFinalResult(result);
       setIsSubmitted(true);
       setIsExamStarted(false);
