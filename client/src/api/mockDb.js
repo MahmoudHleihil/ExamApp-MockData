@@ -34,55 +34,73 @@ export const mockDb = {
     {
       id: "1",
       title: "React Fundamentals",
+      timeLimit: 30, // minutes
+      earlyAccessMinutes: 30,
+      isAlwaysAvailable: false,
+      releaseScoresImmediately: true,
+      scheduledDate: "2026-06-01T10:00:00.000Z",
+      passingScore: 60,
       questions: [
         {
           id: "q1",
           type: "multiple-choice",
           text: "What is JSX?",
           options: ["A CSS framework", "A syntax extension for JavaScript", "A database type", "A server-side language"],
-          correctAnswer: "A syntax extension for JavaScript"
+          correctAnswer: "A syntax extension for JavaScript",
+          points: 50
         },
         {
           id: "q2",
           type: "multiple-choice",
           text: "Which hook is used for side effects?",
           options: ["useState", "useMemo", "useEffect", "useContext"],
-          correctAnswer: "useEffect"
+          correctAnswer: "useEffect",
+          points: 50
         }
       ]
     },
     {
       id: "demo",
       title: "Full-Stack Web Mastery",
-      password: "$2a$10$wOQ/bZzkqylNMsI8gavw1OhhY2DNYi/3Jrwa0uwEUUFD3xOsgNOGu",
+      password: "pass",
+      timeLimit: 60,
+      earlyAccessMinutes: 15,
+      isAlwaysAvailable: true,
+      releaseScoresImmediately: false,
+      scheduledDate: "2026-05-30T10:00:00.000Z",
+      passingScore: 70,
       questions: [
         {
           id: "d1",
           type: "multiple-choice",
           text: "Which of the following is NOT a JavaScript framework?",
           options: ["React", "Angular", "Vue", "Django"],
-          correctAnswer: "Django"
+          correctAnswer: "Django",
+          points: 25
         },
         {
           id: "d2",
           type: "true-false",
           text: "JavaScript is a statically typed language.",
           options: ["True", "False"],
-          correctAnswer: "False"
+          correctAnswer: "False",
+          points: 25
         },
         {
           id: "d3",
           type: "multiple-response",
           text: "Which of these are HTTP methods? (Select all that apply)",
           options: ["GET", "POST", "PUSH", "DELETE"],
-          correctAnswer: ["GET", "POST", "DELETE"]
+          correctAnswer: ["GET", "POST", "DELETE"],
+          points: 25
         },
         {
           id: "d4",
           type: "written",
           text: "What does CSS stand for?",
           options: [],
-          correctAnswer: "Cascading Style Sheets"
+          correctAnswer: "Cascading Style Sheets",
+          points: 25
         }
       ]
     }

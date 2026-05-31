@@ -29,62 +29,75 @@ const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, deletingId, set
               </tr>
             </thead>
             <tbody>
-              {exams.map(exam => (
-                <tr key={exam.id}>
-                  <td className="ps-4">
-                    <span className="fw-bold text-dark">{exam.title}</span>
-                  </td>
-                  <td>
-                    <span className="badge bg-secondary rounded-pill">{exam.questions.length} Questions</span>
-                  </td>
-                  <td>
-                    <code className="bg-light p-1 rounded text-muted small">{exam.id}</code>
-                  </td>
-                  <td className="text-end pe-4">
-                    {/* אם אנחנו במהלך מחיקת המבחן הזה אז שני Confirm Delete ו Cancel מוצגות, אחרת Preview, Edit ו Delete מוצג*/}
-                    {deletingId === exam.id ? (
-                      <div className="btn-group btn-group-sm animate__animated animate__pulse">
-                        <button 
-                          className="btn btn-danger fw-bold px-3" 
-                          onClick={() => onDelete(exam.id)}
-                        >
-                          Confirm Delete
-                        </button>
-                        <button 
-                          className="btn btn-secondary px-3" 
-                          onClick={() => setDeletingId(null)}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="btn-group btn-group-sm">
-                        <button 
-                          className="btn btn-outline-info" 
-                          onClick={() => onPreview(exam.id)}
-                          title="Preview"
-                        >
-                          Preview
-                        </button>
-                        <button 
-                          className="btn btn-outline-primary" 
-                          onClick={() => onEdit(exam.id)}
-                          title="Edit"
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          className="btn btn-outline-danger" 
-                          onClick={() => setDeletingId(exam.id)}
-                          title="Delete"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {exams.map(exam => {
+                const now = new Date();
+                const scheduledDate = new Date(exam.scheduledDate);
+                const expiryDate = new Date(scheduledDate.getTime() + (exam.timeLimit || 60) * 60000);
+                const isExpired = !exam.isAlwaysAvailable && now > expiryDate;
+
+                return (
+                  <tr key={exam.id}>
+                    <td className="ps-4">
+                      <span className="fw-bold text-dark">{exam.title}</span>
+                      {exam.isAlwaysAvailable ? (
+                        <span className="badge bg-success text-white ms-2 small">Always Open</span>
+                      ) : isExpired && (
+                        <span className="badge bg-warning text-dark ms-2 small">Expired</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className="badge bg-secondary rounded-pill">{exam.questions.length} Questions</span>
+                    </td>
+                    <td>
+                      <code className="bg-light p-1 rounded text-muted small">{exam.id}</code>
+                    </td>
+                    <td className="text-end pe-4">
+                      {/* אם אנחנו במהלך מחיקת המבחן הזה אז שני Confirm Delete ו Cancel מוצגות, אחרת Preview, Edit ו Delete מוצג*/}
+                      {deletingId === exam.id ? (
+                        <div className="btn-group btn-group-sm animate__animated animate__pulse">
+                          <button 
+                            className="btn btn-danger fw-bold px-3" 
+                            onClick={() => onDelete(exam.id)}
+                          >
+                            Confirm Delete
+                          </button>
+                          <button 
+                            className="btn btn-secondary px-3" 
+                            onClick={() => setDeletingId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="btn-group btn-group-sm">
+                          <button 
+                            className="btn btn-outline-info" 
+                            onClick={() => onPreview(exam.id)}
+                            title="Preview"
+                          >
+                            Preview
+                          </button>
+                          <button 
+                            className="btn btn-outline-primary" 
+                            onClick={() => onEdit(exam.id)}
+                            disabled={isExpired}
+                            title={isExpired ? "Cannot edit expired exam" : "Edit"}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className="btn btn-outline-danger" 
+                            onClick={() => setDeletingId(exam.id)}
+                            title="Delete"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               {/* אם אין מבחנים אז זה מיוצג */}
               {exams.length === 0 && (
                 <tr>

@@ -1,3 +1,5 @@
+import React, { useState, useEffect } from 'react';
+
 const ExamSearch = ({ 
   examId, 
   setExamId, 
@@ -12,6 +14,26 @@ const ExamSearch = ({
   setPasswordError, 
   startTakingExam 
 }) => {
+  const [now, setNow] = useState(new Date());
+
+  // setting the timer
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getCountdown = (targetDate) => {
+    const diff = new Date(targetDate) - now;
+    if (diff <= 0) return null;
+    
+    const mins = Math.floor(diff / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const isBeforeStart = exam && !exam.isAlwaysAvailable ? now < new Date(exam.scheduledDate) : false;
+  const countdown = exam && !exam.isAlwaysAvailable ? getCountdown(exam.scheduledDate) : null;
+
   return (
     <div className="animate__animated animate__fadeIn">
       <div className="text-center mb-5">
@@ -45,10 +67,27 @@ const ExamSearch = ({
 
           {exam && !isExamStarted && (
             <div className="mt-4 p-4 border-start border-4 border-success bg-light rounded shadow-sm animate__animated animate__fadeIn">
-              <h4 className="fw-bold text-success mb-2">{exam.title}</h4>
-              <div className="d-flex gap-3 mb-4 text-muted">
+              <div className="d-flex justify-content-between align-items-start mb-2">
+                <h4 className="fw-bold text-success mb-0">{exam.title}</h4>
+                {exam.isAlwaysAvailable ? (
+                  <span className="badge bg-success text-white px-3 py-2 rounded-pill shadow-sm">
+                    <i className="bi bi-unlock-fill me-2"></i>
+                    Always Open
+                  </span>
+                ) : isBeforeStart && (
+                  <span className="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm">
+                    <i className="bi bi-hourglass-split me-2"></i>
+                    Starting in {countdown}
+                  </span>
+                )}
+              </div>
+              <div className="d-flex flex-wrap gap-3 mb-4 text-muted">
                 <span><i className="bi bi-question-circle me-1"></i> {exam.questions.length} Questions</span>
-                <span><i className="bi bi-clock me-1"></i> Self-paced</span>
+                <span><i className="bi bi-clock me-1"></i> {exam.timeLimit} Minutes</span>
+                {!exam.isAlwaysAvailable && (
+                  <span><i className="bi bi-calendar-event me-1"></i> {new Date(exam.scheduledDate).toLocaleString()}</span>
+                )}
+                <span><i className="bi bi-award me-1"></i> {exam.passingScore}% to Pass</span>
               </div>
               
               {/* הזנת סיסמת הבחינה אם יש */}
@@ -71,8 +110,17 @@ const ExamSearch = ({
               )}
 
               {/* תחילת הבחינה */}
-              <button className="btn btn-success btn-lg w-100 fw-bold" onClick={startTakingExam}>
-                Start Exam Now
+              <button 
+                className={`btn btn-lg w-100 fw-bold shadow-sm ${isBeforeStart ? 'btn-secondary' : 'btn-success'}`} 
+                onClick={startTakingExam}
+                disabled={isBeforeStart}
+              >
+                {isBeforeStart ? (
+                  <>
+                    <span className="spinner-grow spinner-grow-sm me-2" role="status" aria-hidden="true"></span>
+                    Waiting for Exam to Open...
+                  </>
+                ) : 'Start Exam Now'}
               </button>
             </div>
           )}

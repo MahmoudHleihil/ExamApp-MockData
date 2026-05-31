@@ -26,8 +26,14 @@ const TeacherDashboard = ({ user }) => {
   const initialExamState = {
     title: '',
     password: '',
+    timeLimit: 60,
+    earlyAccessMinutes: 30,
+    isAlwaysAvailable: false,
+    releaseScoresImmediately: true,
+    scheduledDate: new Date().toISOString(),
+    passingScore: 60,
     questions: [
-      { id: 'q1', type: 'multiple-choice', text: '', options: ['', '', '', ''], correctAnswer: '' }
+      { id: 'q1', type: 'multiple-choice', text: '', options: ['', '', '', ''], correctAnswer: '', points: 10 }
     ]
   };
   const [formData, setFormData] = useState(initialExamState);
