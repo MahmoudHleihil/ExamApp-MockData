@@ -79,6 +79,25 @@ const StudentPortal = ({ user }) => {
     setPasswordError('');
     try {
       const data = await examService.getExamById(examId);
+      
+      // Check if the exam is currently available or within early access
+      if (!data.isAlwaysAvailable) {
+        const now = new Date();
+        const scheduledDate = new Date(data.scheduledDate);
+        const earlyAccessDate = new Date(scheduledDate.getTime() - (data.earlyAccessMinutes || 0) * 60000);
+        const expiryDate = new Date(scheduledDate.getTime() + (data.timeLimit || 60) * 60000);
+        
+        if (now < earlyAccessDate) {
+          setError(`This exam is scheduled for ${scheduledDate.toLocaleString()}. Early access opens at ${earlyAccessDate.toLocaleTimeString()}.`);
+          return;
+        }
+        
+        if (now > expiryDate) {
+          setError('This exam session has ended and is no longer available.');
+          return;
+        }
+      }
+      
       setExam(data);
     } catch (_) {
       setError('Exam not found. Please check the ID.');
@@ -121,18 +140,55 @@ const StudentPortal = ({ user }) => {
 
   // פונקציית הגשת המבחן.
   const handleSubmitExam = async () => {
+    // Calculate score automatically
+    let totalPoints = 0;
+    let earnedPoints = 0;
+    
+    exam.questions.forEach(q => {
+      const points = q.points || 0;
+      totalPoints += points;
+      
+      const studentAnswer = selectedAnswers[q.id];
+      const correctAnswer = q.correctAnswer;
+      
+      if (q.type === 'multiple-response') {
+        const studentSet = new Set(studentAnswer || []);
+        const correctSet = new Set(correctAnswer || []);
+        if (studentSet.size === correctSet.size && [...studentSet].every(val => correctSet.has(val))) {
+          earnedPoints += points;
+        }
+      } else if (q.type === 'written') {
+        if (studentAnswer?.trim().toLowerCase() === correctAnswer?.trim().toLowerCase()) {
+          earnedPoints += points;
+        }
+      } else {
+        if (studentAnswer === correctAnswer) {
+          earnedPoints += points;
+        }
+      }
+    });
+
+    const calculatedScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
+    const isPassed = calculatedScore >= (exam.passingScore || 60);
+    const releaseImmediately = exam.releaseScoresImmediately !== false; // Default to true if undefined
+
     // יצירת אובייקט התוצאה.
     const result = {
       id: Math.random().toString(36).substr(2, 9),
       examId: exam.id,
       examTitle: exam.title,
-      score: 0, // Score is initially 0 and will be calculated by the teacher
+      score: calculatedScore,
+      totalPoints,
+      earnedPoints,
+      passingScore: exam.passingScore || 60,
+      isPassed,
       studentName: studentName,
       date: new Date().toISOString(),
       answers: selectedAnswers,
-      feedback: "",
+      feedback: isPassed ? "Congratulations! You passed." : "Keep studying and try again next time.",
       questionFeedback: {},
-      isFeedbackVisible: false
+      isFeedbackVisible: releaseImmediately,
+      releaseScoresImmediately: releaseImmediately
     };
 
     // הגשת התוצאה.
@@ -143,7 +199,7 @@ const StudentPortal = ({ user }) => {
       notificationService.addNotification({
         role: 'Teacher',
         title: 'New Submission',
-        message: `${studentName} submitted their exam: ${exam.title}`,
+        message: `${studentName} submitted their exam: ${exam.title}. Score: ${calculatedScore}%`,
         type: 'submission'
       });
 

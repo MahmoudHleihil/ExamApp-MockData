@@ -22,7 +22,8 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
           type: 'multiple-choice', 
           text: '', 
           options: ['', '', '', ''], 
-          correctAnswer: '' 
+          correctAnswer: '',
+          points: 10
         }
       ]
     }));
@@ -106,7 +107,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
       <div className="card-body p-4">
         <form onSubmit={onSave}>
           <div className="row mb-4">
-            <div className="col-md-8">
+            <div className="col-md-6">
               <label className="form-label fw-bold">Exam Title</label>
               <input 
                 type="text" 
@@ -117,6 +118,75 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                 placeholder="e.g., Advanced JavaScript Concepts"
               />
             </div>
+            <div className="col-md-6">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <label className="form-label fw-bold mb-0">Scheduled Date & Time</label>
+                <div className="form-check form-switch">
+                  <input 
+                    className="form-check-input" 
+                    type="checkbox" 
+                    id="isAlwaysAvailable"
+                    checked={formData.isAlwaysAvailable}
+                    onChange={(e) => setFormData({...formData, isAlwaysAvailable: e.target.checked})}
+                  />
+                  <label className="form-check-label small fw-bold text-primary" htmlFor="isAlwaysAvailable">
+                    Open All The Time
+                  </label>
+                </div>
+              </div>
+              <input 
+                type="datetime-local" 
+                className="form-control form-control-lg border-primary border-opacity-25" 
+                value={formData.scheduledDate ? new Date(new Date(formData.scheduledDate).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''} 
+                onChange={(e) => setFormData({...formData, scheduledDate: new Date(e.target.value).toISOString()})}
+                required={!formData.isAlwaysAvailable}
+                disabled={formData.isAlwaysAvailable}
+              />
+            </div>
+          </div>
+
+          <div className="row mb-4">
+            <div className="col-md-4">
+              <label className="form-label fw-bold">Time Limit (minutes)</label>
+              <input 
+                type="number" 
+                className="form-control form-control-lg border-primary border-opacity-25" 
+                value={formData.timeLimit || ''} 
+                onChange={(e) => setFormData({...formData, timeLimit: parseInt(e.target.value)})}
+                required 
+                min="1"
+                placeholder="e.g., 60"
+              />
+            </div>
+            <div className="col-md-4">
+              <label className="form-label fw-bold">Early Access (minutes)</label>
+              <input 
+                type="number" 
+                className="form-control form-control-lg border-primary border-opacity-25" 
+                value={formData.earlyAccessMinutes || 0} 
+                onChange={(e) => setFormData({...formData, earlyAccessMinutes: parseInt(e.target.value)})}
+                required 
+                min="0"
+                placeholder="e.g., 30"
+              />
+              <div className="form-text small">Allow students to enter early.</div>
+            </div>
+            <div className="col-md-4">
+              <label className="form-label fw-bold">Passing Score</label>
+              <input 
+                type="number" 
+                className="form-control form-control-lg border-primary border-opacity-25" 
+                value={formData.passingScore || ''} 
+                onChange={(e) => setFormData({...formData, passingScore: parseInt(e.target.value)})}
+                required 
+                min="0"
+                max="100"
+                placeholder="e.g., 60"
+              />
+            </div>
+          </div>
+
+          <div className="row mb-4">
             <div className="col-md-4">
               <label className="form-label fw-bold">Exam Password (Optional)</label>
               <input 
@@ -127,6 +197,22 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                 placeholder="Set a password"
               />
               <div className="form-text small">Leave blank for no password.</div>
+            </div>
+            {/* button for releasing the score immediatly */}
+            <div className="col-md-8 d-flex align-items-center">
+              <div className="form-check form-switch mt-4">
+                <input 
+                  className="form-check-input" 
+                  type="checkbox" 
+                  id="releaseScoresImmediately"
+                  checked={formData.releaseScoresImmediately}
+                  onChange={(e) => setFormData({...formData, releaseScoresImmediately: e.target.checked})}
+                />
+                <label className="form-check-label fw-bold text-primary" htmlFor="releaseScoresImmediately">
+                  Release Scores Immediately After Submission
+                </label>
+                <div className="form-text small text-muted">If disabled, students will wait for your manual release.</div>
+              </div>
             </div>
           </div>
           
@@ -152,7 +238,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
               </div>
               <div className="card-body">
                 <div className="row g-3">
-                  <div className="col-md-8">
+                  <div className="col-md-6">
                     <label className="form-label small fw-bold">Question Text</label>
                     <textarea 
                       className="form-control border-0 shadow-sm" 
@@ -174,6 +260,18 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                         <option key={type.value} value={type.value}>{type.label}</option>
                       ))}
                     </select>
+                  </div>
+                  {/* changing points for each question */}
+                  <div className="col-md-2">
+                    <label className="form-label small fw-bold">Points</label>
+                    <input 
+                      type="number" 
+                      className="form-control border-0 shadow-sm" 
+                      value={q.points || 0} 
+                      onChange={(e) => handleQuestionChange(qIndex, 'points', parseInt(e.target.value))}
+                      required 
+                      min="0"
+                    />
                   </div>
                 </div>
 
