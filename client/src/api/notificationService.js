@@ -1,8 +1,9 @@
 import { mockDb } from './mockDb';
+import { API_CONFIG } from './config';
 
 /**
- * Service to manage notifications in memory for the mock application.
- * Handles different notification types for Students, Teachers, and Admins.
+ * Service to manage notifications.
+ * Supports both local memory and server API.
  */
 
 // Listeners for notification updates
@@ -10,7 +11,14 @@ let listeners = [];
 
 export const notificationService = {
   // מחזירה את כל ההודעות
-  getNotifications: (user) => {
+  getNotifications: async (user) => {
+    if (!API_CONFIG.useMock) {
+      const query = `userId=${user.id}&role=${user.role}&fullName=${encodeURIComponent(user.fullName || '')}`;
+      const response = await fetch(`${API_CONFIG.baseUrl}/notifications?${query}`);
+      if (!response.ok) throw new Error('Failed to fetch notifications');
+      return await response.json();
+    }
+
     return mockDb.notifications.filter(n => 
       (n.userId === user.id) || 
       (n.role === user.role) ||
@@ -19,7 +27,19 @@ export const notificationService = {
   },
 
   // מוסיף הודעה חדשה לרשימת ההודעות
-  addNotification: (notification) => {
+  addNotification: async (notification) => {
+    if (!API_CONFIG.useMock) {
+      const response = await fetch(`${API_CONFIG.baseUrl}/notifications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(notification)
+      });
+      if (!response.ok) throw new Error('Failed to add notification');
+      const newNotification = await response.json();
+      notifyListeners();
+      return newNotification;
+    }
+
     // ייצור אובייקט ההודעה החדשה
     const newNotification = {
       id: Math.random().toString(36).substr(2, 9),
@@ -35,7 +55,16 @@ export const notificationService = {
   },
 
   // לסמן ההודעה( לפי ID) כנקראה
-  markAsRead: (id) => {
+  markAsRead: async (id) => {
+    if (!API_CONFIG.useMock) {
+      const response = await fetch(`${API_CONFIG.baseUrl}/notifications/mark-read/${id}`, {
+        method: 'PUT'
+      });
+      if (!response.ok) throw new Error('Failed to mark notification as read');
+      notifyListeners();
+      return;
+    }
+
     const index = mockDb.notifications.findIndex(n => n.id === id);
     if (index !== -1) {
       mockDb.notifications[index].read = true;
@@ -44,7 +73,18 @@ export const notificationService = {
   },
 
   // לסמן את כל ההודעות כנקראות
-  markAllAsRead: (user) => {
+  markAllAsRead: async (user) => {
+    if (!API_CONFIG.useMock) {
+      const response = await fetch(`${API_CONFIG.baseUrl}/notifications/mark-all-read`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, role: user.role })
+      });
+      if (!response.ok) throw new Error('Failed to mark all notifications as read');
+      notifyListeners();
+      return;
+    }
+
     mockDb.notifications = mockDb.notifications.map(n => {
       if (n.userId === user.id || n.role === user.role) {
         return { ...n, read: true };
@@ -55,7 +95,16 @@ export const notificationService = {
   },
 
   // למחיקת ההודעה
-  deleteNotification: (id) => {
+  deleteNotification: async (id) => {
+    if (!API_CONFIG.useMock) {
+      const response = await fetch(`${API_CONFIG.baseUrl}/notifications/${id}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) throw new Error('Failed to delete notification');
+      notifyListeners();
+      return;
+    }
+
     mockDb.notifications = mockDb.notifications.filter(n => n.id !== id);
     notifyListeners();
   },
