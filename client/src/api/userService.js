@@ -1,6 +1,7 @@
 import { mockDb } from './mockDb';
 import bcrypt from 'bcryptjs';
 import logger from '../utils/logger';
+import { API_CONFIG } from './config';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -15,6 +16,19 @@ const MAX_ATTEMPTS = 3;
 export const userService = {
   // פונקציה אסינכרונית לכניסה לחשבון של המשתמש
   login: async (email, password) => {
+    if (!API_CONFIG.useMock) {
+      const response = await fetch(`${API_CONFIG.baseUrl}/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Login failed');
+      }
+      return await response.json();
+    }
+
     logger.debug('Login attempt initiated', { email });
     await delay(800);
     // בודקים את הדוא"ל אחרי שמנקים אותו מרווחים והופכים את האותיות בו לקטנות
@@ -69,6 +83,23 @@ export const userService = {
 
   // פונקציה אסינכונית להרשמה
   register: async (userData) => {
+    if (!API_CONFIG.useMock) {
+      const response = await fetch(`${API_CONFIG.baseUrl}/users/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+      if (!response.ok && response.status !== 202) {
+        const error = await response.json();
+        throw new Error(error.message || 'Registration failed');
+      }
+      if (response.status === 202) {
+        const data = await response.json();
+        throw new Error(data.message);
+      }
+      return await response.json();
+    }
+
     logger.debug('Registration attempt', { email: userData.email, role: userData.role });
     await delay(1000);
     // חיפוש אם המשתמש קיים לפי האימייל שלו
@@ -115,6 +146,19 @@ export const userService = {
 
   // Only for Head Admin use
   createAdmin: async (adminData) => {
+    if (!API_CONFIG.useMock) {
+      const response = await fetch(`${API_CONFIG.baseUrl}/users/admin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(adminData)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create admin');
+      }
+      return await response.json();
+    }
+
     logger.info('Head Admin creating new admin', { newAdminEmail: adminData.email });
     await delay(800);
     const hashedPassword = await bcrypt.hash(adminData.password, SALT_ROUNDS);
@@ -133,6 +177,15 @@ export const userService = {
 
   // פונקציה אסינכרונית שה admin משתמש בה לאשר את חשבון המורה
   approveUser: async (userId) => {
+    if (!API_CONFIG.useMock) {
+      const response = await fetch(`${API_CONFIG.baseUrl}/users/approve/${userId}`, {
+        method: 'PUT'
+      });
+      if (!response.ok) return false;
+      const data = await response.json();
+      return data.success;
+    }
+
     logger.debug('Approving user', { userId });
     await delay(500);
     const user = mockDb.users.find(u => u.id === userId);
@@ -154,12 +207,29 @@ export const userService = {
 
   // מחזירה את כל המשתמשים
   getAllUsers: async () => {
+    if (!API_CONFIG.useMock) {
+      const response = await fetch(`${API_CONFIG.baseUrl}/users`);
+      if (!response.ok) throw new Error('Failed to fetch users');
+      return await response.json();
+    }
+
     await delay(600);
     return mockDb.users.map(({ password, ...u }) => u);
   },
 
   // למחיקת המשתמשים
   deleteUser: async (id) => {
+    if (!API_CONFIG.useMock) {
+      const response = await fetch(`${API_CONFIG.baseUrl}/users/${id}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to delete user');
+      }
+      return true;
+    }
+
     logger.debug('Attempting to delete user', { userId: id });
     await delay(500);
     const index = mockDb.users.findIndex(u => u.id === id);
@@ -174,6 +244,12 @@ export const userService = {
 
   // מחזירה את מצב המערכת ל admin
   getSystemStats: async () => {
+    if (!API_CONFIG.useMock) {
+      const response = await fetch(`${API_CONFIG.baseUrl}/users/stats`);
+      if (!response.ok) throw new Error('Failed to fetch system stats');
+      return await response.json();
+    }
+
     logger.debug('Fetching system stats');
     await delay(700);
     const stats = {
@@ -193,6 +269,11 @@ export const userService = {
 
   // בקשת שינוי הסיסמה
   requestPasswordReset: async (email) => {
+    if (!API_CONFIG.useMock) {
+      // API currently handles this via console logging on mockDb, similar to local.
+      // We could add an endpoint if needed, but for now we stay consistent with mock.
+    }
+
     logger.debug('Password reset request', { email });
     await delay(1000);
     const user = mockDb.users.find(u => u.email === email);
@@ -209,6 +290,19 @@ export const userService = {
 
   // שינוי סיסמה
   resetPassword: async (email, newPassword) => {
+    if (!API_CONFIG.useMock) {
+      const response = await fetch(`${API_CONFIG.baseUrl}/users/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, newPassword })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to reset password');
+      }
+      return await response.json();
+    }
+
     logger.debug('Resetting password', { email });
     await delay(1000);
     const user = mockDb.users.find(u => u.email === email);

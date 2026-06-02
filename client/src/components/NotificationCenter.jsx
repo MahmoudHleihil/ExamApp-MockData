@@ -8,8 +8,13 @@ const NotificationCenter = ({ user }) => {
 
   // לעדכן את ההודעות לפי המשתמש, לכל שינוי של משתמש, ולבטל את ההרשמה כשהרכיב נמחק
   useEffect(() => {
-    const updateNotifications = () => {
-      setNotifications(notificationService.getNotifications(user));
+    const updateNotifications = async () => {
+      try {
+        const data = await notificationService.getNotifications(user);
+        setNotifications(data);
+      } catch (error) {
+        console.error('Failed to fetch notifications:', error);
+      }
     };
 
     updateNotifications();
