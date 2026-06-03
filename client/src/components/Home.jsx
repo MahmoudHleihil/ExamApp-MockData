@@ -1,6 +1,6 @@
-import React from 'react';
+import { Link } from 'react-router-dom';
 
-const Home = ({ onStart }) => {
+const Home = () => {
   return (
     <div className="home-page animate__animated animate__fadeIn">
       {/* Hero Section */}
@@ -15,18 +15,18 @@ const Home = ({ onStart }) => {
                 The all-in-one platform for teachers to create, students to excel, and admins to oversee. Secure, efficient, and professional.
               </p>
               <div className="d-flex gap-3 justify-content-center justify-content-lg-start">
-                <button 
-                  className="btn btn-primary btn-lg px-5 py-3 fw-bold shadow"
-                  onClick={() => onStart('register')}
+                <Link 
+                  to="/register"
+                  className="btn btn-primary btn-lg px-5 py-3 fw-bold shadow text-decoration-none"
                 >
                   Join for Free
-                </button>
-                <button 
-                  className="btn btn-outline-dark btn-lg px-5 py-3 fw-bold"
-                  onClick={() => onStart('login')}
+                </Link>
+                <Link 
+                  to="/login"
+                  className="btn btn-outline-dark btn-lg px-5 py-3 fw-bold text-decoration-none"
                 >
                   Sign In
-                </button>
+                </Link>
               </div>
             </div>
             <div className="col-lg-5 d-none d-lg-block">
