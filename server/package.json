@@ -6,7 +6,12 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "test-db": "node testConnection.js",
+    "init-db": "node scripts/initDb.js",
+    "seed-db": "node scripts/seedDb.js",
+    "get-exam": "node testGetExam.js",
+    "test-queries": "node testQueries.js"
   },
   "keywords": [],
   "author": "",
@@ -15,7 +20,8 @@
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "pg": "^8.21.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
