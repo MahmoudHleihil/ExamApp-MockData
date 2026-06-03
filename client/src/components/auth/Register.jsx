@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { userService } from '../../api/userService';
 
-const Register = ({ onRegisterSuccess, onSwitchToLogin, onBackToHome }) => {
+const Register = ({ onRegisterSuccess }) => {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -42,9 +43,9 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin, onBackToHome }) => {
       {/* Left side - Info */}
       <div className="col-lg-6 d-none d-lg-flex bg-success p-5 flex-column justify-content-between text-white position-relative">
         <div className="position-relative z-1">
-          <button className="btn btn-link text-white p-0 mb-5 text-decoration-none" onClick={onBackToHome}>
+          <Link to="/" className="btn btn-link text-white p-0 mb-5 text-decoration-none">
             <i className="bi bi-arrow-left me-2"></i> Back to home
-          </button>
+          </Link>
           <h2 className="display-5 fw-bold mb-4">Start Your Journey with E-Test</h2>
           <p className="lead opacity-75">Create an account to join the world's most intuitive assessment platform.</p>
         </div>
@@ -156,13 +157,12 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin, onBackToHome }) => {
 
             <div className="text-center">
               <span className="text-muted small">Already have an account? </span>
-              <button
-                type="button"
+              <Link
+                to="/login"
                 className="btn btn-link p-0 small fw-bold text-decoration-none"
-                onClick={onSwitchToLogin}
               >
                 Sign In
-              </button>
+              </Link>
             </div>
           </form>
         </div>

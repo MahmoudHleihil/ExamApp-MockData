@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { userService } from '../../api/userService';
 
-const Login = ({ onLoginSuccess, onSwitchToRegister, onSwitchToForgot, onBackToHome }) => {
+const Login = ({ onLoginSuccess, onSwitchToForgot }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -29,9 +30,9 @@ const Login = ({ onLoginSuccess, onSwitchToRegister, onSwitchToForgot, onBackToH
       {/* Left side - Info */}
       <div className="col-lg-6 d-none d-lg-flex bg-primary p-5 flex-column justify-content-between text-white position-relative">
         <div className="position-relative z-1">
-          <button className="btn btn-link text-white p-0 mb-5 text-decoration-none" onClick={onBackToHome}>
+          <Link to="/" className="btn btn-link text-white p-0 mb-5 text-decoration-none">
             <i className="bi bi-arrow-left me-2"></i> Back to home
-          </button>
+          </Link>
           <h2 className="display-5 fw-bold mb-4">Welcome Back to <br/>E-Test System</h2>
           <p className="lead opacity-75">Sign in to access your dashboard, manage exams, and track progress.</p>
         </div>
@@ -132,13 +133,12 @@ const Login = ({ onLoginSuccess, onSwitchToRegister, onSwitchToForgot, onBackToH
 
             <div className="text-center">
               <span className="text-muted small">Don't have an account? </span>
-              <button
-                type="button"
+              <Link
+                to="/register"
                 className="btn btn-link p-0 small fw-bold text-decoration-none"
-                onClick={onSwitchToRegister}
               >
                 Create an account
-              </button>
+              </Link>
             </div>
           </form>
           

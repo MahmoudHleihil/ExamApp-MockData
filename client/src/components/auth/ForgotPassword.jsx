@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { userService } from '../../api/userService';
 
-const ForgotPassword = ({ onSwitchToLogin, onBackToHome, onLinkSent }) => {
+const ForgotPassword = ({ onLinkSent }) => {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState({ type: '', text: '' });
   const [loading, setLoading] = useState(false);
@@ -26,9 +27,9 @@ const ForgotPassword = ({ onSwitchToLogin, onBackToHome, onLinkSent }) => {
   return (
     <div className="row g-0 shadow-lg rounded-4 overflow-hidden animate__animated animate__fadeIn" style={{ minHeight: '500px' }}>
       <div className="col-lg-5 bg-dark p-5 text-white d-flex flex-column justify-content-center">
-        <button className="btn btn-link text-white p-0 mb-4 text-start text-decoration-none" onClick={onBackToHome}>
+        <Link to="/" className="btn btn-link text-white p-0 mb-4 text-start text-decoration-none">
           <i className="bi bi-arrow-left me-2"></i> Back to home
-        </button>
+        </Link>
         <h2 className="fw-bold mb-3">Forgot Password?</h2>
         <p className="opacity-75">No worries! Enter your email and we'll send you a link to reset your password.</p>
       </div>
@@ -77,9 +78,9 @@ const ForgotPassword = ({ onSwitchToLogin, onBackToHome, onLinkSent }) => {
           )}
 
           <div className="text-center mt-3">
-            <button className="btn btn-link p-0 small fw-bold text-decoration-none" onClick={onSwitchToLogin}>
+            <Link to="/login" className="btn btn-link p-0 small fw-bold text-decoration-none">
               Return to Sign In
-            </button>
+            </Link>
           </div>
         </div>
       </div>
