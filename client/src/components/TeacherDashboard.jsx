@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useParams, Link } from 'react-router-dom';
 import { examService } from '../api/examService';
 import ExamForm from './teacher/ExamForm';
 import ExamList from './teacher/ExamList';
@@ -9,7 +10,7 @@ import TeacherChatbot from './teacher/TeacherChatbot';
 import { mockDb } from '../api/mockDb';
 
 const TeacherDashboard = ({ user }) => {
-  const [view, setView] = useState('home'); // 'home', 'list', 'form', 'preview', 'submissions', 'submission-detail'
+  const navigate = useNavigate();
   const [exams, setExams] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
@@ -57,10 +58,8 @@ const TeacherDashboard = ({ user }) => {
     try {
       const data = await examService.getAllSubmissions();
       setSubmissions(data);
-      setView('submissions');
     } catch (error) {
       console.error("Failed to fetch submissions:", error);
-      alert("Failed to load submissions");
     } finally {
       setSubmissionsLoading(false);
     }
@@ -73,7 +72,7 @@ const TeacherDashboard = ({ user }) => {
     try {
       const exam = await examService.getExamById(submission.examId);
       setDetailExam(exam);
-      setView('submission-detail');
+      navigate(`/teacher/submissions/${submission.id}`);
     } catch (error) {
       console.error("Failed to fetch exam for submission:", error);
       alert("Failed to load submission details");
@@ -85,6 +84,7 @@ const TeacherDashboard = ({ user }) => {
   // אחרי טעינת הרכיב הזה המבחנים נטענים.
   useEffect(() => {
     fetchExams();
+    fetchSubmissions();
   }, []);
 
   // פונקציה לאמת הטופס של הבחינה.
@@ -107,7 +107,6 @@ const TeacherDashboard = ({ user }) => {
 
   // פונקציית שמירת המבחן.
   const handleSaveExam = async (e) => {
-    // ללא טעינת הדף מחדש.
     e.preventDefault();
     const error = validateForm();
     if (error) {
@@ -123,6 +122,7 @@ const TeacherDashboard = ({ user }) => {
       }
       resetToHome();
       fetchExams();
+      navigate('/teacher/exams');
     } catch (error) {
       alert(`Failed to ${isEditing ? 'update' : 'create'} exam`);
     }
@@ -135,7 +135,7 @@ const TeacherDashboard = ({ user }) => {
       setFormData(exam);
       setEditExamId(id);
       setIsEditing(true);
-      setView('form');
+      navigate(`/teacher/exams/edit/${id}`);
     } catch (error) {
       alert("Failed to load exam for editing");
     }
@@ -157,7 +157,7 @@ const TeacherDashboard = ({ user }) => {
     try {
       const exam = await examService.getExamById(id);
       setPreviewExam(exam);
-      setView('preview');
+      navigate(`/teacher/exams/preview/${id}`);
     } catch (error) {
       alert("Failed to load exam for preview");
     }
@@ -165,7 +165,6 @@ const TeacherDashboard = ({ user }) => {
 
   // פונקצייה לחזור לדף ראשי.
   const resetToHome = () => {
-    setView('home');
     setIsEditing(false);
     setEditExamId(null);
     setFormData(initialExamState);
@@ -175,34 +174,94 @@ const TeacherDashboard = ({ user }) => {
     setDetailExam(null);
   };
 
-  // פונקצייה לטעינת הרכיב לפי view.
-  const renderContent = () => {
-    if (detailLoading) {
-      return (
-        <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status"></div>
-          <p className="mt-2 text-muted">Loading details...</p>
+  const TeacherHome = () => (
+    <div className="row g-4 mt-2 justify-content-center animate__animated animate__fadeIn">
+      <div className="col-md-4">
+        <div className="card h-100 shadow-sm border-0 text-center p-4 hover-lift transition-all">
+          <div className="card-body">
+            <div className="display-4 text-primary mb-3">
+              <i className="bi bi-plus-circle-dotted"></i>
+            </div>
+            <h4 className="fw-bold">Create New Exam</h4>
+            <p className="text-muted">Design a new assessment with multiple question types.</p>
+            <button className="btn btn-primary btn-lg w-100 mt-3 fw-bold" onClick={() => { resetToHome(); navigate('/teacher/exams/new'); }}>
+              Launch Creator
+            </button>
+          </div>
         </div>
-      );
-    }
+      </div>
+      <div className="col-md-4">
+        <div className="card h-100 shadow-sm border-0 text-center p-4 hover-lift transition-all">
+          <div className="card-body">
+            <div className="display-4 text-info mb-3">
+              <i className="bi bi-collection"></i>
+            </div>
+            <h4 className="fw-bold">Manage Exams</h4>
+            <p className="text-muted">View, edit, or remove your existing exams.</p>
+            <button className="btn btn-info btn-lg w-100 mt-3 text-white fw-bold" onClick={() => navigate('/teacher/exams')}>
+              View All Exams
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="col-md-4">
+        <div className="card h-100 shadow-sm border-0 text-center p-4 hover-lift transition-all">
+          <div className="card-body">
+            <div className="display-4 text-success mb-3">
+              <i className="bi bi-clipboard-check"></i>
+            </div>
+            <h4 className="fw-bold">Review Submissions</h4>
+            <p className="text-muted">Grade student answers and see performance analytics.</p>
+            <button 
+              className="btn btn-success btn-lg w-100 mt-3 text-white fw-bold" 
+              onClick={() => navigate('/teacher/submissions')}
+              disabled={submissionsLoading}
+            >
+              {submissionsLoading ? <span className="spinner-border spinner-border-sm"></span> : 'View Results'}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="col-md-10 mt-5">
+        <div className="card border-0 bg-light p-4 rounded-4">
+          <div className="d-flex align-items-center justify-content-around text-center">
+            <div>
+              <h2 className="fw-bold text-primary mb-0">{exams.length}</h2>
+              <small className="text-muted text-uppercase fw-bold">Active Exams</small>
+            </div>
+            <div className="vr opacity-10"></div>
+            <div>
+              <h2 className="fw-bold text-success mb-0">98%</h2>
+              <small className="text-muted text-uppercase fw-bold">Avg. Completion</small>
+            </div>
+            <div className="vr opacity-10"></div>
+            <div>
+              <h2 className="fw-bold text-warning mb-0">{mockDb.studentScores.length}</h2>
+              <small className="text-muted text-uppercase fw-bold">Recent Submissions</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
-    switch (view) {
-      case 'form':
-        return (
-          <ExamForm 
-            formData={formData} 
-            setFormData={setFormData} 
-            isEditing={isEditing} 
-            onSave={handleSaveExam} 
-            onCancel={resetToHome} 
-          />
-        );
-      case 'list':
-        return (
+  return (
+    <div className="container mt-2">
+      <div className="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+        <h2 className="fw-bold mb-0">Teacher Dashboard</h2>
+      </div>
+
+      {/* Nested Routes for Teacher Features */}
+      <Routes>
+        {/* Main Teacher Menu */}
+        <Route path="/" element={<TeacherHome />} />
+        
+        {/* Exam Management Routes */}
+        <Route path="exams" element={
           <div className="animate__animated animate__fadeIn">
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h3 className="fw-bold text-dark">Manage Existing Exams</h3>
-              <button className="btn btn-secondary px-4" onClick={resetToHome}>Back to Menu</button>
+              <button className="btn btn-secondary px-4" onClick={() => navigate('/teacher')}>Back to Menu</button>
             </div>
             <ExamList 
               exams={exams} 
@@ -214,127 +273,63 @@ const TeacherDashboard = ({ user }) => {
               setDeletingId={setDeletingId} 
             />
           </div>
-        );
-      case 'preview':
-        return (
+        } />
+        
+        {/* Create and Edit Exam Routes */}
+        <Route path="exams/new" element={
+          <ExamForm 
+            formData={formData} 
+            setFormData={setFormData} 
+            isEditing={false} 
+            onSave={handleSaveExam} 
+            onCancel={() => navigate('/teacher')} 
+          />
+        } />
+        <Route path="exams/edit/:id" element={
+          <ExamForm 
+            formData={formData} 
+            setFormData={setFormData} 
+            isEditing={true} 
+            onSave={handleSaveExam} 
+            onCancel={() => navigate('/teacher/exams')} 
+          />
+        } />
+        
+        {/* Exam Preview Route */}
+        <Route path="exams/preview/:id" element={
           <ExamPreview 
             previewExam={previewExam} 
-            onBack={() => setView('list')} 
+            onBack={() => navigate('/teacher/exams')} 
             onEdit={handleEditClick} 
           />
-        );
-      case 'submissions':
-        return (
+        } />
+        
+        {/* Student Submission Tracking Routes */}
+        <Route path="submissions" element={
           <SubmissionList 
             submissions={submissions} 
             loading={submissionsLoading} 
-            onBack={resetToHome} 
+            onBack={() => navigate('/teacher')} 
             onViewDetails={handleViewSubmissionDetails}
           />
-        );
-      case 'submission-detail':
-        return (
-          <SubmissionDetail 
-            submission={selectedSubmission} 
-            exam={detailExam} 
-            onBack={() => setView('submissions')} 
-          />
-        );
-      default:
-        return (
-          <div className="row g-4 mt-2 justify-content-center animate__animated animate__fadeIn">
-            <div className="col-md-4">
-              <div className="card h-100 shadow-sm border-0 text-center p-4 hover-lift transition-all">
-                <div className="card-body">
-                  <div className="display-4 text-primary mb-3">
-                    <i className="bi bi-plus-circle-dotted"></i>
-                  </div>
-                  <h4 className="fw-bold">Create New Exam</h4>
-                  <p className="text-muted">Design a new assessment with multiple question types.</p>
-                  <button className="btn btn-primary btn-lg w-100 mt-3 fw-bold" onClick={() => setView('form')}>
-                    Launch Creator
-                  </button>
-                </div>
-              </div>
+        } />
+        <Route path="submissions/:id" element={
+          detailLoading ? (
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status"></div>
+              <p className="mt-2 text-muted">Loading details...</p>
             </div>
-            <div className="col-md-4">
-              <div className="card h-100 shadow-sm border-0 text-center p-4 hover-lift transition-all">
-                <div className="card-body">
-                  <div className="display-4 text-info mb-3">
-                    <i className="bi bi-collection"></i>
-                  </div>
-                  <h4 className="fw-bold">Manage Exams</h4>
-                  <p className="text-muted">View, edit, or remove your existing exams.</p>
-                  <button className="btn btn-info btn-lg w-100 mt-3 text-white fw-bold" onClick={() => setView('list')}>
-                    View All Exams
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-4">
-              <div className="card h-100 shadow-sm border-0 text-center p-4 hover-lift transition-all">
-                <div className="card-body">
-                  <div className="display-4 text-success mb-3">
-                    <i className="bi bi-clipboard-check"></i>
-                  </div>
-                  <h4 className="fw-bold">Review Submissions</h4>
-                  <p className="text-muted">Grade student answers and see performance analytics.</p>
-                  <button 
-                    className="btn btn-success btn-lg w-100 mt-3 text-white fw-bold" 
-                    onClick={fetchSubmissions}
-                    disabled={submissionsLoading}
-                  >
-                    {submissionsLoading ? <span className="spinner-border spinner-border-sm"></span> : 'View Results'}
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-10 mt-5">
-              <div className="card border-0 bg-light p-4 rounded-4">
-                <div className="d-flex align-items-center justify-content-around text-center">
-                  <div>
-                    <h2 className="fw-bold text-primary mb-0">{exams.length}</h2>
-                    <small className="text-muted text-uppercase fw-bold">Active Exams</small>
-                  </div>
-                  <div className="vr opacity-10"></div>
-                  <div>
-                    <h2 className="fw-bold text-success mb-0">98%</h2>
-                    <small className="text-muted text-uppercase fw-bold">Avg. Completion</small>
-                  </div>
-                  <div className="vr opacity-10"></div>
-                  <div>
-                    <h2 className="fw-bold text-warning mb-0">{mockDb.studentScores.length}</h2>
-                    <small className="text-muted text-uppercase fw-bold">Recent Submissions</small>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-    }
-  };
+          ) : (
+            <SubmissionDetail 
+              submission={selectedSubmission} 
+              exam={detailExam} 
+              onBack={() => navigate('/teacher/submissions')} 
+            />
+          )
+        } />
+      </Routes>
 
-  return (
-    <div className="container mt-2">
-      <div className="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
-        <h2 className="fw-bold mb-0">Teacher Dashboard</h2>
-        {view !== 'home' && (
-          <nav aria-label="breadcrumb">
-            <ol className="breadcrumb mb-0">
-              <li className="breadcrumb-item"><a href="#" onClick={(e) => { e.preventDefault(); resetToHome(); }}>Dashboard</a></li>
-              <li className="breadcrumb-item active" aria-current="page">
-                {view === 'submission-detail' ? 'Submission Detail' : 
-                 view.charAt(0).toUpperCase() + view.slice(1)}
-              </li>
-            </ol>
-          </nav>
-        )}
-      </div>
-
-      {renderContent()}
-      {/* רכיב הבוט  */}
       <TeacherChatbot context={{
-        view,
         examsCount: exams.length,
         submissionsCount: submissions.length,
         isEditing,

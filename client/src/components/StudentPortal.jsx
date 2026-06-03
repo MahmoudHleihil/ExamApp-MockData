@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useParams, Link, Navigate } from 'react-router-dom';
 import { examService } from '../api/examService';
 import { notificationService } from '../api/notificationService';
 import PortalTabs from './student/PortalTabs';
@@ -9,7 +10,7 @@ import FeedbackList from './student/FeedbackList';
 import FeedbackDetail from './student/FeedbackDetail';
 
 const StudentPortal = ({ user }) => {
-  const [activeTab, setActiveTab] = useState('take-exam'); // 'take-exam', 'my-feedback'
+  const navigate = useNavigate();
   const [examId, setExamId] = useState('');
   const [exam, setExam] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -45,12 +46,9 @@ const StudentPortal = ({ user }) => {
     }
   };
 
-  // טוען את ההגשות של הסטודנט בכל פעם שמשנים ל My Feedback
   useEffect(() => {
-    if (activeTab === 'my-feedback') {
-      fetchStudentSubmissions();
-    }
-  }, [activeTab]);
+    fetchStudentSubmissions();
+  }, []);
 
   // פונקציה אסינכרונית לטעינת המשוב
   const handleViewFeedback = async (submission) => {
@@ -60,6 +58,7 @@ const StudentPortal = ({ user }) => {
     try {
       const examData = await examService.getExamById(submission.examId);
       setFeedbackExam(examData);
+      navigate(`/student/feedback/${submission.id}`);
     } catch (err) {
       console.error("Failed to fetch exam for feedback:", err);
     } finally {
@@ -117,6 +116,7 @@ const StudentPortal = ({ user }) => {
     setCurrentQuestionIndex(0);
     setSelectedAnswers({});
     setIsSubmitted(false);
+    navigate(`/student/exams/${exam.id}/take`);
   };
 
   // פונקציה של שינוי התשובה של השאלה.
@@ -206,6 +206,7 @@ const StudentPortal = ({ user }) => {
       setFinalResult(result);
       setIsSubmitted(true);
       setIsExamStarted(false);
+      navigate(`/student/exams/${exam.id}/result`, { state: { result } });
     } catch (_) {
       setError('Failed to submit exam.');
     }
@@ -216,82 +217,99 @@ const StudentPortal = ({ user }) => {
     setIsSubmitted(false);
     setExamId('');
     setFinalResult(null);
-    setActiveTab('my-feedback');
+    navigate('/student/feedback');
   };
-
-  // אחרי הגשת המבחן וקבלת הציון.
-  if (isSubmitted && finalResult) {
-    return <ExamResult finalResult={finalResult} onGoToSubmissions={handleGoToSubmissions} />;
-  }
-
-  // המבחן התחיל.
-  if (isExamStarted && exam) {
-    return (
-      // הרכיב של הגישה למבחן
-      <ExamTaker 
-        exam={exam}
-        currentQuestionIndex={currentQuestionIndex}
-        setCurrentQuestionIndex={setCurrentQuestionIndex}
-        selectedAnswers={selectedAnswers}
-        handleAnswerChange={handleAnswerChange}
-        handleSubmitExam={handleSubmitExam}
-      />
-    );
-  }
 
   return (
     <div className="container mt-4">
-      {/* Navigation Tabs */}
-      {!isExamStarted && (
-        <PortalTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-      )}
+      {/* Nested Routes for Student Features */}
+      <Routes>
+        {/* Default redirect to exams list */}
+        <Route path="/" element={<Navigate to="exams" replace />} />
+        
+        {/* Exam Search and Discovery Route */}
+        <Route path="exams" element={
+          <div className="row justify-content-center">
+            <div className="col-md-10">
+              <PortalTabs />
+              <ExamSearch 
+                examId={examId}
+                setExamId={setExamId}
+                handleStartExam={handleStartExam}
+                loading={loading}
+                error={error}
+                exam={exam}
+                isExamStarted={isExamStarted}
+                enteredPassword={enteredPassword}
+                setEnteredPassword={setEnteredPassword}
+                passwordError={passwordError}
+                setPasswordError={setPasswordError}
+                startTakingExam={startTakingExam}
+              />
+            </div>
+          </div>
+        } />
 
-      <div className="row justify-content-center">
-        <div className="col-md-10">
-          {activeTab === 'take-exam' ? (
-            // רכיב חיפוש על הבחינה
-            <ExamSearch 
-              examId={examId}
-              setExamId={setExamId}
-              handleStartExam={handleStartExam}
-              loading={loading}
-              error={error}
+        {/* Active Exam Session Route */}
+        <Route path="exams/:id/take" element={
+          exam ? (
+            <ExamTaker 
               exam={exam}
-              isExamStarted={isExamStarted}
-              enteredPassword={enteredPassword}
-              setEnteredPassword={setEnteredPassword}
-              passwordError={passwordError}
-              setPasswordError={setPasswordError}
-              startTakingExam={startTakingExam}
+              currentQuestionIndex={currentQuestionIndex}
+              setCurrentQuestionIndex={setCurrentQuestionIndex}
+              selectedAnswers={selectedAnswers}
+              handleAnswerChange={handleAnswerChange}
+              handleSubmitExam={handleSubmitExam}
             />
-          ) : (
-            <>
-              {selectedFeedback ? (
-                // רכיב נתוני המשוב
-                <FeedbackDetail 
-                  selectedFeedback={selectedFeedback}
-                  setSelectedFeedback={setSelectedFeedback}
-                  feedbackExam={feedbackExam}
-                  setFeedbackExam={setFeedbackExam}
-                  showFullReview={showFullReview}
-                  setShowFullReview={setShowFullReview}
-                />
-              ) : feedbackLoading ? (
+          ) : <Navigate to="/student/exams" replace />
+        } />
+
+        {/* Exam Completion Result Route */}
+        <Route path="exams/:id/result" element={
+          finalResult ? (
+            <ExamResult finalResult={finalResult} onGoToSubmissions={handleGoToSubmissions} />
+          ) : <Navigate to="/student/exams" replace />
+        } />
+
+        {/* Feedback and Results History Route */}
+        <Route path="feedback" element={
+          <div className="row justify-content-center">
+            <div className="col-md-10">
+              <PortalTabs />
+              {feedbackLoading && !selectedFeedback ? (
                 <div className="text-center py-5">
                   <div className="spinner-border text-primary" role="status"></div>
                   <p className="mt-2 text-muted">Loading your results...</p>
                 </div>
               ) : (
-                // רכיב רשימת המשובים
                 <FeedbackList 
                   studentSubmissions={studentSubmissions}
                   handleViewFeedback={handleViewFeedback}
                 />
               )}
-            </>
-          )}
-        </div>
-      </div>
+            </div>
+          </div>
+        } />
+
+        {/* Detailed Feedback Review Route */}
+        <Route path="feedback/:id" element={
+          <div className="row justify-content-center">
+            <div className="col-md-10">
+              <FeedbackDetail 
+                selectedFeedback={selectedFeedback}
+                setSelectedFeedback={(val) => {
+                  setSelectedFeedback(val);
+                  if (!val) navigate('/student/feedback');
+                }}
+                feedbackExam={feedbackExam}
+                setFeedbackExam={setFeedbackExam}
+                showFullReview={showFullReview}
+                setShowFullReview={setShowFullReview}
+              />
+            </div>
+          </div>
+        } />
+      </Routes>
     </div>
   );
 };

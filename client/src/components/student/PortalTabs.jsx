@@ -1,20 +1,26 @@
+import { NavLink } from 'react-router-dom';
+
 // רכיב בחירת הדף בפורטל
-const PortalTabs = ({ activeTab, setActiveTab }) => {
+const PortalTabs = () => {
   return (
     <div className="d-flex justify-content-center mb-5">
       <div className="btn-group p-1 bg-light rounded-pill shadow-sm">
-        <button 
-          className={`btn rounded-pill px-4 py-2 fw-bold transition-all ${activeTab === 'take-exam' ? 'btn-primary shadow-sm' : 'btn-light'}`}
-          onClick={() => setActiveTab('take-exam')}
+        <NavLink 
+          to="/student/exams"
+          className={({ isActive }) => 
+            `btn rounded-pill px-4 py-2 fw-bold transition-all ${isActive ? 'btn-primary shadow-sm' : 'btn-light'}`
+          }
         >
           <i className="bi bi-pencil-square me-2"></i>Take Exam
-        </button>
-        <button 
-          className={`btn rounded-pill px-4 py-2 fw-bold transition-all ${activeTab === 'my-feedback' ? 'btn-primary shadow-sm' : 'btn-light'}`}
-          onClick={() => setActiveTab('my-feedback')}
+        </NavLink>
+        <NavLink 
+          to="/student/feedback"
+          className={({ isActive }) => 
+            `btn rounded-pill px-4 py-2 fw-bold transition-all ${isActive ? 'btn-primary shadow-sm' : 'btn-light'}`
+          }
         >
           <i className="bi bi-chat-right-text me-2"></i>My Feedback
-        </button>
+        </NavLink>
       </div>
     </div>
   );
