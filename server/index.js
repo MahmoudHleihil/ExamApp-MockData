@@ -18,11 +18,11 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], // Allow self and inline scripts for React
-      styleSrc: ["'self'", "'unsafe-inline'"],  // Allow self and inline styles
-      imgSrc: ["'self'", "data:", "https:"],    // Allow self, data URIs, and https images
-      connectSrc: ["'self'", "http://localhost:5000"], // Allow connections to API
-      fontSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Allow self, inline, and eval for React/Vite
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "http://localhost:*", "ws://localhost:*", "http://127.0.0.1:*"], // Support Vite HMR and API
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
       frameSrc: ["'none'"],
@@ -40,10 +40,10 @@ app.use(cookieParser());
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again after 15 minutes',
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  max: 1000, // Increased to 1000 for development
+  message: { message: 'Too many requests from this IP, please try again after 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // Apply the rate limiting middleware to all requests
@@ -51,9 +51,9 @@ app.use('/api/', limiter);
 
 // Specific rate limiter for auth routes
 const authLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // Limit each IP to 5 login/register requests per hour
-  message: 'Too many authentication attempts, please try again after an hour',
+  windowMs: 15 * 60 * 1000, // Reduced to 15 minutes
+  max: 50, // Increased to 50 attempts
+  message: { message: 'Too many authentication attempts, please try again after 15 minutes' },
   standardHeaders: true,
   legacyHeaders: false,
 });

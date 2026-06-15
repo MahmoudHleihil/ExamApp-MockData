@@ -11,11 +11,15 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [authState, setAuthState] = useState(() => {
     // Initialize state from storage on app load
-    const savedUser = localStorage.getItem('etest_user') || sessionStorage.getItem('etest_user');
-    
-    return {
-      user: savedUser ? JSON.parse(savedUser) : null
-    };
+    try {
+      const savedUser = localStorage.getItem('etest_user') || sessionStorage.getItem('etest_user');
+      return {
+        user: savedUser ? JSON.parse(savedUser) : null
+      };
+    } catch (error) {
+      console.error("Failed to parse saved user:", error);
+      return { user: null };
+    }
   });
 
   /**

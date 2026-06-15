@@ -201,15 +201,15 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={
             user?.role === 'Admin' ? (
-              <AdminDashboard user={user} />
+              <Navigate to="/admin" replace />
             ) : user?.role === 'Teacher' ? (
-              <TeacherDashboard user={user} />
+              <Navigate to="/teacher" replace />
             ) : (
-              <StudentPortal user={user} />
+              <Navigate to="/student" replace />
             )
           } />
           
-          <Route path="/admin" element={<AdminDashboard user={user} />} />
+          <Route path="/admin/*" element={<AdminDashboard user={user} />} />
           <Route path="/teacher/*" element={<TeacherDashboard user={user} />} />
           <Route path="/student/*" element={<StudentPortal user={user} />} />
         </Route>
