@@ -20,6 +20,27 @@ const getLogLevel = () => {
 const currentLogLevel = getLogLevel();
 
 /**
+ * Recursively scrubs sensitive keys from metadata objects to prevent accidental PII leaks.
+ */
+const sanitizeMeta = (obj) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  
+  const SENSITIVE_KEYS = ['password', 'token', 'jwt', 'secret', 'email', 'auth'];
+  const sanitized = Array.isArray(obj) ? [] : {};
+  
+  for (const key in obj) {
+    if (SENSITIVE_KEYS.some(sk => key.toLowerCase().includes(sk))) {
+      sanitized[key] = '[REDACTED]';
+    } else if (typeof obj[key] === 'object') {
+      sanitized[key] = sanitizeMeta(obj[key]);
+    } else {
+      sanitized[key] = obj[key];
+    }
+  }
+  return sanitized;
+};
+
+/**
  * Formats the log message with timestamp and a unique request ID.
  * @param {string} level - The log level (e.g., 'info', 'error')
  * @param {string} message - The message to log
@@ -38,7 +59,8 @@ const formatLog = (level, message, meta) => {
   
   // If meta is provided, pass it as a separate argument for better browser console inspection
   if (meta && (typeof meta === 'object' || Array.isArray(meta))) {
-    return [`${prefix} ${message}`, meta];
+    const cleanMeta = sanitizeMeta(meta);
+    return [`${prefix} ${message}`, cleanMeta];
   }
   
   return [`${prefix} ${message}`];

@@ -1,5 +1,5 @@
 import { mockDb } from './mockDb';
-import { API_CONFIG } from './config';
+import { API_CONFIG, getFetchConfig } from './config';
 
 /**
  * Service to manage notifications.
@@ -14,7 +14,7 @@ export const notificationService = {
   getNotifications: async (user) => {
     if (!API_CONFIG.useMock) {
       const query = `userId=${user.id}&role=${user.role}&fullName=${encodeURIComponent(user.fullName || '')}`;
-      const response = await fetch(`${API_CONFIG.baseUrl}/notifications?${query}`);
+      const response = await fetch(`${API_CONFIG.baseUrl}/notifications?${query}`, getFetchConfig());
       if (!response.ok) throw new Error('Failed to fetch notifications');
       return await response.json();
     }
@@ -29,11 +29,7 @@ export const notificationService = {
   // מוסיף הודעה חדשה לרשימת ההודעות
   addNotification: async (notification) => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/notifications`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(notification)
-      });
+      const response = await fetch(`${API_CONFIG.baseUrl}/notifications`, getFetchConfig('POST', notification));
       if (!response.ok) throw new Error('Failed to add notification');
       const newNotification = await response.json();
       notifyListeners();
@@ -57,9 +53,7 @@ export const notificationService = {
   // לסמן ההודעה( לפי ID) כנקראה
   markAsRead: async (id) => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/notifications/mark-read/${id}`, {
-        method: 'PUT'
-      });
+      const response = await fetch(`${API_CONFIG.baseUrl}/notifications/mark-read/${id}`, getFetchConfig('PUT'));
       if (!response.ok) throw new Error('Failed to mark notification as read');
       notifyListeners();
       return;
@@ -75,11 +69,7 @@ export const notificationService = {
   // לסמן את כל ההודעות כנקראות
   markAllAsRead: async (user) => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/notifications/mark-all-read`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, role: user.role })
-      });
+      const response = await fetch(`${API_CONFIG.baseUrl}/notifications/mark-all-read`, getFetchConfig('PUT', { userId: user.id, role: user.role }));
       if (!response.ok) throw new Error('Failed to mark all notifications as read');
       notifyListeners();
       return;
@@ -97,9 +87,7 @@ export const notificationService = {
   // למחיקת ההודעה
   deleteNotification: async (id) => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/notifications/${id}`, {
-        method: 'DELETE'
-      });
+      const response = await fetch(`${API_CONFIG.baseUrl}/notifications/${id}`, getFetchConfig('DELETE'));
       if (!response.ok) throw new Error('Failed to delete notification');
       notifyListeners();
       return;

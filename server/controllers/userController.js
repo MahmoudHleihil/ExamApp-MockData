@@ -1,10 +1,19 @@
 import { mockDb } from '../data/mockDb.js';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 const SALT_ROUNDS = 10;
 const failedAttempts = {};
 const LOCKOUT_TIME = 30000;
 const MAX_ATTEMPTS = 3;
+
+const generateToken = (user) => {
+  return jwt.sign(
+    { id: user.id, email: user.email, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+};
 
 export const login = async (req, res) => {
   try {
@@ -28,8 +37,21 @@ export const login = async (req, res) => {
         return res.status(403).json({ message: 'Your account is pending approval by an administrator.' });
       }
       delete failedAttempts[sanitizedEmail];
+      
+      const token = generateToken(user);
       const { password: _, ...userWithoutPassword } = user;
-      return res.json(userWithoutPassword);
+      
+      // Set HttpOnly cookie
+      res.cookie('etest_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      });
+
+      return res.json({
+        user: userWithoutPassword
+      });
     }
 
     failedAttempts[sanitizedEmail] = failedAttempts[sanitizedEmail] || { count: 0 };
@@ -42,6 +64,7 @@ export const login = async (req, res) => {
 
     res.status(401).json({ message: `Invalid email or password. ${MAX_ATTEMPTS - failedAttempts[sanitizedEmail].count} attempts remaining.` });
   } catch (error) {
+    console.error('Login Error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -73,11 +96,25 @@ export const register = async (req, res) => {
       return res.status(202).json({ message: 'Registration successful! Please wait for an administrator to approve your account.' });
     }
 
+    const token = generateToken(newUser);
     const { password: _, ...userWithoutPassword } = newUser;
+    
+    res.cookie('etest_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
     res.status(201).json(userWithoutPassword);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+export const logout = async (req, res) => {
+  res.clearCookie('etest_token');
+  res.json({ success: true });
 };
 
 export const createAdmin = async (req, res) => {

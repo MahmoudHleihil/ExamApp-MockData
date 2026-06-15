@@ -61,9 +61,58 @@ export const deleteExam = async (req, res) => {
 
 export const submitScore = async (req, res) => {
   try {
-    const scoreData = req.body;
+    const { examId, studentName, answers } = req.body;
+    
+    // Find the exam to get correct answers
+    const exam = mockDb.exams.find(e => e.id === examId);
+    if (!exam) return res.status(404).json({ message: 'Exam not found' });
+
+    // Calculate score on the backend
+    let totalPoints = 0;
+    let earnedPoints = 0;
+
+    exam.questions.forEach(q => {
+      totalPoints += q.points;
+      const studentAnswer = answers[q.id];
+      const correctAnswer = q.correctAnswer;
+
+      if (q.type === 'multiple-response') {
+        // For multiple response, check if arrays match (order independent)
+        if (Array.isArray(studentAnswer) && Array.isArray(correctAnswer)) {
+          const isCorrect = studentAnswer.length === correctAnswer.length && 
+                            studentAnswer.every(val => correctAnswer.includes(val));
+          if (isCorrect) earnedPoints += q.points;
+        }
+      } else if (q.type === 'written') {
+        // Written answers are usually graded manually, but we can do a simple case-insensitive match for auto-grading
+        if (studentAnswer && studentAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase()) {
+          earnedPoints += q.points;
+        }
+      } else {
+        // Standard multiple choice or true/false
+        if (studentAnswer === correctAnswer) {
+          earnedPoints += q.points;
+        }
+      }
+    });
+
+    const finalScore = Math.round((earnedPoints / totalPoints) * 100);
+
+    const scoreData = {
+      id: `s${mockDb.studentScores.length + 1}`,
+      examId,
+      examTitle: exam.title,
+      score: finalScore,
+      studentName,
+      date: new Date().toISOString(),
+      answers,
+      feedback: '',
+      questionFeedback: {},
+      isFeedbackVisible: exam.releaseScoresImmediately
+    };
+
     mockDb.studentScores.push(scoreData);
-    res.json({ success: true });
+    res.json({ success: true, score: finalScore });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

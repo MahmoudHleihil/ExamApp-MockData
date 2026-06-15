@@ -9,33 +9,40 @@ import { userService } from '../api/userService';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    // Initialize user state from storage on app load
+  const [authState, setAuthState] = useState(() => {
+    // Initialize state from storage on app load
     const savedUser = localStorage.getItem('etest_user') || sessionStorage.getItem('etest_user');
-    return savedUser ? JSON.parse(savedUser) : null;
+    
+    return {
+      user: savedUser ? JSON.parse(savedUser) : null
+    };
   });
 
   /**
    * Handle user login and persistence
-   * @param {Object} userData - User information from API
+   * @param {Object} data - Data from API (contains {user} or just user)
    * @param {boolean} rememberMe - Whether to use localStorage for persistence
    */
-  const login = (userData, rememberMe) => {
-    setUser(userData);
-    if (rememberMe) {
-      localStorage.setItem('etest_user', JSON.stringify(userData));
-    } else {
-      sessionStorage.setItem('etest_user', JSON.stringify(userData));
-    }
+  const login = (data, rememberMe) => {
+    // Handle both mock (just user) and server (user) responses
+    // Token is now set via HttpOnly cookie by the server
+    const user = data.user || data;
+
+    setAuthState({ user });
+    
+    const storage = rememberMe ? localStorage : sessionStorage;
+    storage.setItem('etest_user', JSON.stringify(user));
   };
 
   /**
    * Handle user registration persistence
    */
-  const register = (userData) => {
-    if (userData) {
-      setUser(userData);
-      sessionStorage.setItem('etest_user', JSON.stringify(userData));
+  const register = (data) => {
+    if (data) {
+      const user = data.user || data;
+      
+      setAuthState({ user });
+      sessionStorage.setItem('etest_user', JSON.stringify(user));
     }
   };
 
@@ -48,19 +55,19 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
-      setUser(null);
+      setAuthState({ user: null });
       localStorage.removeItem('etest_user');
       sessionStorage.removeItem('etest_user');
     }
   };
 
   const value = {
-    user,
+    user: authState.user,
     login,
     register,
     logout,
-    isAuthenticated: !!user,
-    role: user?.role
+    isAuthenticated: !!authState.user,
+    role: authState.user?.role
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
