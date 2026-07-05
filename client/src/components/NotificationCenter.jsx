@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { notificationService } from '../api/notificationService';
+import { useNavigate } from 'react-router-dom';
 
 const NotificationCenter = ({ user }) => {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const navigate = useNavigate();
 
   // לעדכן את ההודעות לפי המשתמש, לכל שינוי של משתמש, ולבטל את ההרשמה כשהרכיב נמחק
   useEffect(() => {
@@ -72,6 +74,35 @@ const NotificationCenter = ({ user }) => {
     }
   };
 
+  const handleNotificationClick = async (notification) => {
+    // Mark as read
+    await notificationService.markAsRead(notification.id);
+
+    // Navigate according to notification type
+    switch (notification.type) {
+      case 'submission':
+        navigate('/teacher/submissions');
+        break;
+
+      case 'feedback':
+        navigate('/student/feedback');
+        break;
+
+      case 'approval':
+        navigate('/admin/users');
+        break;
+
+      case 'deletion':
+        navigate('/admin/users');
+        break;
+
+      default:
+        navigate('/');
+    }
+
+    setIsOpen(false);
+  };
+  
   return (
     <div className="position-relative" ref={dropdownRef}>
       <button 
@@ -118,7 +149,7 @@ const NotificationCenter = ({ user }) => {
                   <div 
                     key={n.id} 
                     className={`list-group-item list-group-item-action p-3 border-bottom-0 position-relative ${!n.read ? 'bg-primary-subtle' : ''}`}
-                    onClick={() => notificationService.markAsRead(n.id)}
+                    onClick={() => handleNotificationClick(n)}
                     style={{ cursor: 'pointer' }}
                   >
                     <div className="d-flex align-items-start gap-3">
