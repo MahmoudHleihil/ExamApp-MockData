@@ -37,8 +37,18 @@ const TeacherChatbot = ({ context }) => {
     try {
       const response = await aiService.sendMessage(input, context);
       setMessages(prev => [...prev, { role: 'ai', content: response }]);
-    } catch (_) {
-      setMessages(prev => [...prev, { role: 'ai', content: 'Sorry, I encountered an error. Please try again.' }]);
+    } catch (error) {
+      console.error("AI chat error:", error.response?.data || error.message);
+
+      setMessages(prev => [
+        ...prev,
+        {
+          role: "ai",
+          content:
+            error.response?.data?.message ||
+            "Sorry, I encountered an error. Please try again.",
+        },
+      ]);
     } finally {
       setIsTyping(false);
     }
@@ -133,7 +143,7 @@ const TeacherChatbot = ({ context }) => {
             </form>
             <div className="text-center mt-2">
               <small className="text-muted" style={{ fontSize: '0.7rem' }}>
-                <i className="bi bi-shield-check me-1"></i> Local & Private
+                <i className="bi bi-shield-check me-1"></i> Secure AI Assistant
               </small>
             </div>
           </div>

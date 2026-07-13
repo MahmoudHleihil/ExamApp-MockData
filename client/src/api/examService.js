@@ -96,7 +96,7 @@ export const examService = {
   // מחזירה את כל ההגשוש
   getAllSubmissions: async () => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/exams/submissions/all`, getFetchConfig());
+      const response = await fetch(`${API_CONFIG.baseUrl}/exams/submissions`, getFetchConfig());
       if (!response.ok) throw new Error('Failed to fetch submissions');
       return await response.json();
     }

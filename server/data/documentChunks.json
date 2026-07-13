@@ -1,0 +1,338 @@
+[
+  {
+    "id": "1cae0f85-8c8a-4b3d-acae-c4e075225957",
+    "documentId": "a959a1b6-4fe5-4627-b10a-00f23e3da639",
+    "chunkIndex": 0,
+    "text": "Tel-Hai College - Course 199934 Introduction to Quantum Computing Lecture-07 Prof. Ofer Shir ofersh@telhai.ac.il Spring 2025 Shir Tel-Hai: intro2QC (199934) Spring 2025 1 / 19 -- 1 of 19 -- Quantum Optimization Approaches There are two primary approaches to quantum optimization: 1 Quantum Annealing: This approach, exemplified by D-Wave Systems, leverages a physical process to find the ground state of a quantum system. It is well-suited for combinatorial optimization problems. 2 Gate-based Quantum Computing: This approach, employed by companies like IBM and Google, uses quantum gates to manipulate qubits and solve optimization problems. It offers greater flexibility but requires more complex algorithms. Shir Tel-Hai: intro2QC (199934) Spring 2025 2 / 19 -- 2 of 19 -- Quantum Optimization by Annealing based on (i) ACM’s GECCO “Introduction to Quantum Optimization” tutorial by A. Moraglio &",
+    "createdAt": "2026-07-09T20:01:26.119Z"
+  },
+  {
+    "id": "4c649ffc-3ef9-4267-b40f-ead737ae4d33",
+    "documentId": "a959a1b6-4fe5-4627-b10a-00f23e3da639",
+    "chunkIndex": 1,
+    "text": " 2025 2 / 19 -- 2 of 19 -- Quantum Optimization by Annealing based on (i) ACM’s GECCO “Introduction to Quantum Optimization” tutorial by A. Moraglio & F. Chicano, (ii) “A Tutorial on Formulating and Using QUBO Models” by F. Glover & G. Kochenberger & Y. Du, and (iii) D-Wave’s documentation. Shir Tel-Hai: intro2QC (199934) Spring 2025 3 / 19 -- 3 of 19 -- quantum optimization by annealing (i) adiabatic theorem (ii) QUBO formulations (iii) use-cases Shir Tel-Hai: intro2QC (199934) Spring 2025 4 / 19 -- 4 of 19 -- back to Hamilton & Schr¨ odinger The Hamiltonian completely describes the physical system, representing its energy function: H := ∑ n εn |En〉 〈En| that is, its diagonalization provides the energy eigenstates of the system, {|En〉} as well as the quantum energy spectrum {εn}. The Schr¨odinger equation defines the time evolution of the system (P6 @ Lecture-1), relying on the Hamilton",
+    "createdAt": "2026-07-09T20:01:26.119Z"
+  },
+  {
+    "id": "0c9b3503-2b67-4f21-b4f6-8341f42d3618",
+    "documentId": "a959a1b6-4fe5-4627-b10a-00f23e3da639",
+    "chunkIndex": 2,
+    "text": "well as the quantum energy spectrum {εn}. The Schr¨odinger equation defines the time evolution of the system (P6 @ Lecture-1), relying on the Hamiltonian: iℏ ∂ ∂t |ψ (t)〉 = H(t) |ψ (t)〉 . (1) Shir Tel-Hai: intro2QC (199934) Spring 2025 5 / 19 -- 5 of 19 -- the Ising model • Definition: Simple model of interacting magnetic spins on a lattice. • Spins: Each lattice site i has a spin si, which can be either +1 (spin up) or −1 (spin down). • Interactions via Nearest-Neighbor Coupling (Jij ): Spins interact only with their immediate neighbors. J > 0 (Ferromagnetic – spins tend to align) or J < 0 ( Antiferromagnetic – spins anti-align) • External Magnetic Field (h): Spins also interact with an external magnetic field. • Hamiltonian: The energy of the system is given by: H = − ∑ 〈i,j〉 Jij sisj − μ ∑ i hisi • Significance: Fundamental model for understanding critical phenomena and statistical me",
+    "createdAt": "2026-07-09T20:01:26.119Z"
+  },
+  {
+    "id": "97664b05-fe71-47f2-b59b-8bcee0cc64c5",
+    "documentId": "a959a1b6-4fe5-4627-b10a-00f23e3da639",
+    "chunkIndex": 3,
+    "text": " the system is given by: H = − ∑ 〈i,j〉 Jij sisj − μ ∑ i hisi • Significance: Fundamental model for understanding critical phenomena and statistical mechanics – but also in neural networks, social modeling. Shir Tel-Hai: intro2QC (199934) Spring 2025 6 / 19 -- 6 of 19 -- 2D Ising: general scheme Particular configurations are defined by instantiations of Jij and hi: Shir Tel-Hai: intro2QC (199934) Spring 2025 7 / 19 -- 7 of 19 -- Adiabatic Theorem and Quantum Annealing (1/2) Adiabatic Theorem: • States that a quantum system remains in its instantaneous ground state if the Hamiltonian changes slowly enough. • Let H(t) denote the Hamiltonian, then given a state |ψ(t)〉 H(t)|ψ(t)〉 = E(t)|ψ(t)〉 • As t evolves from 0 to T , if the evolution is slow, the system stays in the ground state. Quantum Annealing: • A method to solve optimization problems by evolving a quantum system from a simple initia",
+    "createdAt": "2026-07-09T20:01:26.119Z"
+  },
+  {
+    "id": "28b9474b-57a6-460c-ab94-c18c8eec64ee",
+    "documentId": "a959a1b6-4fe5-4627-b10a-00f23e3da639",
+    "chunkIndex": 4,
+    "text": ", the system stays in the ground state. Quantum Annealing: • A method to solve optimization problems by evolving a quantum system from a simple initial Hamiltonian Hi to a final Hamiltonian Hf encoding the problem. • The time-dependent Hamiltonian is given by: H(t) = (1 − s(t))Hi + s(t)Hf where s(t) interpolates from 0 to 1 as t goes from 0 to T . Shir Tel-Hai: intro2QC (199934) Spring 2025 8 / 19 -- 8 of 19 -- Adiabatic Theorem and Quantum Annealing (2/2) Initial and Final Hamiltonians: • Initial Hamiltonian Hi: A simple Hamiltonian whose ground state is easy to prepare. Hi = − ∑ i sx i • Final Hamiltonian Hf : Encodes the optimization problem, Hf = − ∑ 〈i,j〉 Jij sz i sz j − ∑ i hisz i where Jij and hi represent the problem constraints and local fields. Adiabatic Condition: • To ensure the system remains in the ground state, the evolution must be slow enough: dH(t) dt \u001c ∆2 where ∆ is th",
+    "createdAt": "2026-07-09T20:01:26.119Z"
+  },
+  {
+    "id": "f3f06906-14cf-412f-b3a8-8f80b92348d1",
+    "documentId": "a959a1b6-4fe5-4627-b10a-00f23e3da639",
+    "chunkIndex": 5,
+    "text": " local fields. Adiabatic Condition: • To ensure the system remains in the ground state, the evolution must be slow enough: dH(t) dt \u001c ∆2 where ∆ is the energy gap between the ground state and first excited state. Shir Tel-Hai: intro2QC (199934) Spring 2025 9 / 19 -- 9 of 19 -- Quadratic Unconstrained Binary Optimization The Quadratic Unconstrained Binary Optimization (QUBO) problem can be formulated as finding a binary vector x ∈ {0, 1}n that solves: minimize xT Qx Q is an n × n matrix of real coefficients representing the quadratic terms: A matrix where each element Qij represents the interaction between the binary variables xi and xj . The idea: draw analogy Ising model ⇐⇒ QUBO optimization: [Ising]: ∑ i,j Jij sisj − ∑ i hisi ⇐⇒ [QUBO]: xT Qx Shir Tel-Hai: intro2QC (199934) Spring 2025 10 / 19 -- 10 of 19 -- topology Unlike theoretical modeling, in quantum annealing hardware there are ",
+    "createdAt": "2026-07-09T20:01:26.119Z"
+  },
+  {
+    "id": "64bae555-4d28-4a2e-821c-f2e18c41ba41",
+    "documentId": "a959a1b6-4fe5-4627-b10a-00f23e3da639",
+    "chunkIndex": 6,
+    "text": "T Qx Shir Tel-Hai: intro2QC (199934) Spring 2025 10 / 19 -- 10 of 19 -- topology Unlike theoretical modeling, in quantum annealing hardware there are no connections among all qubit pairs (D-Wave 2000Q QPU): inner-cell topology intra-cell topology Shir Tel-Hai: intro2QC (199934) Spring 2025 11 / 19 -- 11 of 19 -- embedding To solve a problem expressed as an Ising model on a quantum computer, the variables of the Ising model needs to be assigned to physical qubits. The interaction strength between two qubits can be controlled only if there is a physical connection between two qubits. This means that variables in the Ising model that appear together in a quadratic term must be assigned to qubits with a physical connection. This is done by a procedure by the name of “Minor Embedding”. Shir Tel-Hai: intro2QC (199934) Spring 2025 12 / 19 -- 12 of 19 -- D-Wave’s Pegasus architecture Shir Tel-Ha",
+    "createdAt": "2026-07-09T20:01:26.119Z"
+  },
+  {
+    "id": "b539c668-2c51-450a-b081-38d91ac72d94",
+    "documentId": "a959a1b6-4fe5-4627-b10a-00f23e3da639",
+    "chunkIndex": 7,
+    "text": "ocedure by the name of “Minor Embedding”. Shir Tel-Hai: intro2QC (199934) Spring 2025 12 / 19 -- 12 of 19 -- D-Wave’s Pegasus architecture Shir Tel-Hai: intro2QC (199934) Spring 2025 13 / 19 -- 13 of 19 -- basic QUBO problem formulation The QUBO model is expressed by the optimization problem: minimize/maximize f := xT Qx x is an n-dimensional binary vector (x ∈ {0, 1}n): A vector where each element is either 0 or 1. The elements represent binary decision variables in the optimization problem. The Q matrix is assumed to be symmetric or in upper triangular form: Symmetric form: For all i and j except i = j, replace qij by (qij + qji)/2. Upper triangular form: For all i and j with j > i, replace qij by qij + qji. Then replace all qij for j < i by 0. Shir Tel-Hai: intro2QC (199934) Spring 2025 14 / 19 -- 14 of 19 -- illustrative QUBO formed min f = −5x1 − 3x2 − 8x3 − 6x4 + 4x1x2 + 8x1x3 + 2x",
+    "createdAt": "2026-07-09T20:01:26.119Z"
+  },
+  {
+    "id": "2b44f97b-5996-4908-bef0-0ccc5c71b8f6",
+    "documentId": "a959a1b6-4fe5-4627-b10a-00f23e3da639",
+    "chunkIndex": 8,
+    "text": " by 0. Shir Tel-Hai: intro2QC (199934) Spring 2025 14 / 19 -- 14 of 19 -- illustrative QUBO formed min f = −5x1 − 3x2 − 8x3 − 6x4 + 4x1x2 + 8x1x3 + 2x2x3 + 10x3x4 with the decision variables xj being binary. A few observations: 1 f has a linear part, −5x1 − 3x2 − 8x3 − 6x4 and a quadratic part 4x1x2 + 8x1x3 + 2x2x3 + 10x3x4. 2 Since binary variables satisfy xj = x2 j , the linear part is rewritten: −5x2 1 − 3x2 2 − 8x2 3 − 6x2 4. 3 We may rewrite the model as (using a full, symmetric Q): f = ( x1 x2 x3 x4 )      −5 2 4 0 2 −3 1 0 4 1 −8 5 0 0 5 −6           x1 x2 x3 x4      Shir Tel-Hai: intro2QC (199934) Spring 2025 15 / 19 -- 15 of 19 -- illustrative QUBO solved The attained f is in a valid QUBO form, that is, constraints-free except for the binary requirement. We state that f has been “qubified”. Solving a QUBO model is N P-hard in general, but state-of-the-art sol",
+    "createdAt": "2026-07-09T20:01:26.119Z"
+  },
+  {
+    "id": "369cb099-296a-4ae9-ab9f-6b6b8d1f5ed7",
+    "documentId": "a959a1b6-4fe5-4627-b10a-00f23e3da639",
+    "chunkIndex": 9,
+    "text": "nts-free except for the binary requirement. We state that f has been “qubified”. Solving a QUBO model is N P-hard in general, but state-of-the-art solvers (e.g., commercial solvers such as CPLEX or Gurobi) are capable of obtaining good solutions. The current model is solved by x∗ =      1 0 0 1      f ∗ = −11 Shir Tel-Hai: intro2QC (199934) Spring 2025 16 / 19 -- 16 of 19 -- the MAX-CUT problem The “Max-Cut” problem is one of the most famous problems in Combinatorial Optimization. Formally, the MAX-CUT problem involves finding a partition of the vertices of a graph G = (V, E) into two disjoint subsets such that the number of edges between the two subsets is maximized. For each vertex vi ∈ V , let xi be a binary decision variable such that: • xi = 0 if vertex vi is in subset V0 • xi = 1 if vertex vi is in subset V1 The edge (i, j) is cut if xi 6 = xj , which is indicated by xi +",
+    "createdAt": "2026-07-09T20:01:26.119Z"
+  },
+  {
+    "id": "d28a5137-6552-424f-8c30-f33b6f05eae7",
+    "documentId": "a959a1b6-4fe5-4627-b10a-00f23e3da639",
+    "chunkIndex": 10,
+    "text": "uch that: • xi = 0 if vertex vi is in subset V0 • xi = 1 if vertex vi is in subset V1 The edge (i, j) is cut if xi 6 = xj , which is indicated by xi + xj − 2xixj . Shir Tel-Hai: intro2QC (199934) Spring 2025 17 / 19 -- 17 of 19 -- MAX-CUT as a QUBO The objective function may be formulated as minimizing the sum over xi(1 − xj ) + xj (1 − xi): f (x) = − ∑ (i,j)∈E (xi + xj − 2xixj ) = − ∑ (i,j)∈E (x2 i + x2 j − 2xixj ) 7 → min Accordingly, the elements of the matrix Q are defined as follows: Qij =        deg(i) if i = j −2 if (i, j) ∈ E 0 otherwise Overall, given a graph G, the MAX-CUT problem may be formulated as a QUBO: max ∑ (i,j)∈E (x2 i + x2 j − 2xixj ) = min xT Qx Shir Tel-Hai: intro2QC (199934) Spring 2025 18 / 19 -- 18 of 19 -- to be continued... Shir Tel-Hai: intro2QC (199934) Spring 2025 19 / 19 -- 19 of 19 --",
+    "createdAt": "2026-07-09T20:01:26.119Z"
+  },
+  {
+    "id": "7cf52b96-0e1e-4441-b3d6-48ef524ac82e",
+    "documentId": "a959a1b6-4fe5-4627-b10a-00f23e3da639",
+    "chunkIndex": 11,
+    "text": "to be continued... Shir Tel-Hai: intro2QC (199934) Spring 2025 19 / 19 -- 19 of 19 --",
+    "createdAt": "2026-07-09T20:01:26.119Z"
+  },
+  {
+    "id": "483bd30d-e58e-4f4a-a653-b63ba40c7c41",
+    "documentId": "857852de-6e69-45a9-a1cf-98ff9b30254a",
+    "chunkIndex": 0,
+    "text": "Tel-Hai College - Course 199934 Introduction to Quantum Computing Lecture-07 Prof. Ofer Shir ofersh@telhai.ac.il Spring 2025 Shir Tel-Hai: intro2QC (199934) Spring 2025 1 / 19 -- 1 of 19 -- Quantum Optimization Approaches There are two primary approaches to quantum optimization: 1 Quantum Annealing: This approach, exemplified by D-Wave Systems, leverages a physical process to find the ground state of a quantum system. It is well-suited for combinatorial optimization problems. 2 Gate-based Quantum Computing: This approach, employed by companies like IBM and Google, uses quantum gates to manipulate qubits and solve optimization problems. It offers greater flexibility but requires more complex algorithms. Shir Tel-Hai: intro2QC (199934) Spring 2025 2 / 19 -- 2 of 19 -- Quantum Optimization by Annealing based on (i) ACM’s GECCO “Introduction to Quantum Optimization” tutorial by A. Moraglio &",
+    "createdAt": "2026-07-10T11:26:17.513Z"
+  },
+  {
+    "id": "100fe21d-308c-452c-88f6-8518e61c6733",
+    "documentId": "857852de-6e69-45a9-a1cf-98ff9b30254a",
+    "chunkIndex": 1,
+    "text": " 2025 2 / 19 -- 2 of 19 -- Quantum Optimization by Annealing based on (i) ACM’s GECCO “Introduction to Quantum Optimization” tutorial by A. Moraglio & F. Chicano, (ii) “A Tutorial on Formulating and Using QUBO Models” by F. Glover & G. Kochenberger & Y. Du, and (iii) D-Wave’s documentation. Shir Tel-Hai: intro2QC (199934) Spring 2025 3 / 19 -- 3 of 19 -- quantum optimization by annealing (i) adiabatic theorem (ii) QUBO formulations (iii) use-cases Shir Tel-Hai: intro2QC (199934) Spring 2025 4 / 19 -- 4 of 19 -- back to Hamilton & Schr¨ odinger The Hamiltonian completely describes the physical system, representing its energy function: H := ∑ n εn |En〉 〈En| that is, its diagonalization provides the energy eigenstates of the system, {|En〉} as well as the quantum energy spectrum {εn}. The Schr¨odinger equation defines the time evolution of the system (P6 @ Lecture-1), relying on the Hamilton",
+    "createdAt": "2026-07-10T11:26:17.513Z"
+  },
+  {
+    "id": "b18eec5e-db54-410d-9e7e-951cfdbb6c77",
+    "documentId": "857852de-6e69-45a9-a1cf-98ff9b30254a",
+    "chunkIndex": 2,
+    "text": "well as the quantum energy spectrum {εn}. The Schr¨odinger equation defines the time evolution of the system (P6 @ Lecture-1), relying on the Hamiltonian: iℏ ∂ ∂t |ψ (t)〉 = H(t) |ψ (t)〉 . (1) Shir Tel-Hai: intro2QC (199934) Spring 2025 5 / 19 -- 5 of 19 -- the Ising model • Definition: Simple model of interacting magnetic spins on a lattice. • Spins: Each lattice site i has a spin si, which can be either +1 (spin up) or −1 (spin down). • Interactions via Nearest-Neighbor Coupling (Jij ): Spins interact only with their immediate neighbors. J > 0 (Ferromagnetic – spins tend to align) or J < 0 ( Antiferromagnetic – spins anti-align) • External Magnetic Field (h): Spins also interact with an external magnetic field. • Hamiltonian: The energy of the system is given by: H = − ∑ 〈i,j〉 Jij sisj − μ ∑ i hisi • Significance: Fundamental model for understanding critical phenomena and statistical me",
+    "createdAt": "2026-07-10T11:26:17.513Z"
+  },
+  {
+    "id": "133dfa72-005c-4438-9b6e-ff8656239870",
+    "documentId": "857852de-6e69-45a9-a1cf-98ff9b30254a",
+    "chunkIndex": 3,
+    "text": " the system is given by: H = − ∑ 〈i,j〉 Jij sisj − μ ∑ i hisi • Significance: Fundamental model for understanding critical phenomena and statistical mechanics – but also in neural networks, social modeling. Shir Tel-Hai: intro2QC (199934) Spring 2025 6 / 19 -- 6 of 19 -- 2D Ising: general scheme Particular configurations are defined by instantiations of Jij and hi: Shir Tel-Hai: intro2QC (199934) Spring 2025 7 / 19 -- 7 of 19 -- Adiabatic Theorem and Quantum Annealing (1/2) Adiabatic Theorem: • States that a quantum system remains in its instantaneous ground state if the Hamiltonian changes slowly enough. • Let H(t) denote the Hamiltonian, then given a state |ψ(t)〉 H(t)|ψ(t)〉 = E(t)|ψ(t)〉 • As t evolves from 0 to T , if the evolution is slow, the system stays in the ground state. Quantum Annealing: • A method to solve optimization problems by evolving a quantum system from a simple initia",
+    "createdAt": "2026-07-10T11:26:17.513Z"
+  },
+  {
+    "id": "e9e55f71-de2b-4bdb-851c-211c57d70606",
+    "documentId": "857852de-6e69-45a9-a1cf-98ff9b30254a",
+    "chunkIndex": 4,
+    "text": ", the system stays in the ground state. Quantum Annealing: • A method to solve optimization problems by evolving a quantum system from a simple initial Hamiltonian Hi to a final Hamiltonian Hf encoding the problem. • The time-dependent Hamiltonian is given by: H(t) = (1 − s(t))Hi + s(t)Hf where s(t) interpolates from 0 to 1 as t goes from 0 to T . Shir Tel-Hai: intro2QC (199934) Spring 2025 8 / 19 -- 8 of 19 -- Adiabatic Theorem and Quantum Annealing (2/2) Initial and Final Hamiltonians: • Initial Hamiltonian Hi: A simple Hamiltonian whose ground state is easy to prepare. Hi = − ∑ i sx i • Final Hamiltonian Hf : Encodes the optimization problem, Hf = − ∑ 〈i,j〉 Jij sz i sz j − ∑ i hisz i where Jij and hi represent the problem constraints and local fields. Adiabatic Condition: • To ensure the system remains in the ground state, the evolution must be slow enough: dH(t) dt \u001c ∆2 where ∆ is th",
+    "createdAt": "2026-07-10T11:26:17.513Z"
+  },
+  {
+    "id": "5cba647b-cd79-4c0a-8391-dda4c23280cc",
+    "documentId": "857852de-6e69-45a9-a1cf-98ff9b30254a",
+    "chunkIndex": 5,
+    "text": " local fields. Adiabatic Condition: • To ensure the system remains in the ground state, the evolution must be slow enough: dH(t) dt \u001c ∆2 where ∆ is the energy gap between the ground state and first excited state. Shir Tel-Hai: intro2QC (199934) Spring 2025 9 / 19 -- 9 of 19 -- Quadratic Unconstrained Binary Optimization The Quadratic Unconstrained Binary Optimization (QUBO) problem can be formulated as finding a binary vector x ∈ {0, 1}n that solves: minimize xT Qx Q is an n × n matrix of real coefficients representing the quadratic terms: A matrix where each element Qij represents the interaction between the binary variables xi and xj . The idea: draw analogy Ising model ⇐⇒ QUBO optimization: [Ising]: ∑ i,j Jij sisj − ∑ i hisi ⇐⇒ [QUBO]: xT Qx Shir Tel-Hai: intro2QC (199934) Spring 2025 10 / 19 -- 10 of 19 -- topology Unlike theoretical modeling, in quantum annealing hardware there are ",
+    "createdAt": "2026-07-10T11:26:17.513Z"
+  },
+  {
+    "id": "d3f21ebc-879d-4030-bb44-b3b9243a7a0d",
+    "documentId": "857852de-6e69-45a9-a1cf-98ff9b30254a",
+    "chunkIndex": 6,
+    "text": "T Qx Shir Tel-Hai: intro2QC (199934) Spring 2025 10 / 19 -- 10 of 19 -- topology Unlike theoretical modeling, in quantum annealing hardware there are no connections among all qubit pairs (D-Wave 2000Q QPU): inner-cell topology intra-cell topology Shir Tel-Hai: intro2QC (199934) Spring 2025 11 / 19 -- 11 of 19 -- embedding To solve a problem expressed as an Ising model on a quantum computer, the variables of the Ising model needs to be assigned to physical qubits. The interaction strength between two qubits can be controlled only if there is a physical connection between two qubits. This means that variables in the Ising model that appear together in a quadratic term must be assigned to qubits with a physical connection. This is done by a procedure by the name of “Minor Embedding”. Shir Tel-Hai: intro2QC (199934) Spring 2025 12 / 19 -- 12 of 19 -- D-Wave’s Pegasus architecture Shir Tel-Ha",
+    "createdAt": "2026-07-10T11:26:17.513Z"
+  },
+  {
+    "id": "56f6a30a-46bf-4ff1-b080-185109b654c0",
+    "documentId": "857852de-6e69-45a9-a1cf-98ff9b30254a",
+    "chunkIndex": 7,
+    "text": "ocedure by the name of “Minor Embedding”. Shir Tel-Hai: intro2QC (199934) Spring 2025 12 / 19 -- 12 of 19 -- D-Wave’s Pegasus architecture Shir Tel-Hai: intro2QC (199934) Spring 2025 13 / 19 -- 13 of 19 -- basic QUBO problem formulation The QUBO model is expressed by the optimization problem: minimize/maximize f := xT Qx x is an n-dimensional binary vector (x ∈ {0, 1}n): A vector where each element is either 0 or 1. The elements represent binary decision variables in the optimization problem. The Q matrix is assumed to be symmetric or in upper triangular form: Symmetric form: For all i and j except i = j, replace qij by (qij + qji)/2. Upper triangular form: For all i and j with j > i, replace qij by qij + qji. Then replace all qij for j < i by 0. Shir Tel-Hai: intro2QC (199934) Spring 2025 14 / 19 -- 14 of 19 -- illustrative QUBO formed min f = −5x1 − 3x2 − 8x3 − 6x4 + 4x1x2 + 8x1x3 + 2x",
+    "createdAt": "2026-07-10T11:26:17.513Z"
+  },
+  {
+    "id": "f7286ae6-7998-4293-8f48-407a3ff574e6",
+    "documentId": "857852de-6e69-45a9-a1cf-98ff9b30254a",
+    "chunkIndex": 8,
+    "text": " by 0. Shir Tel-Hai: intro2QC (199934) Spring 2025 14 / 19 -- 14 of 19 -- illustrative QUBO formed min f = −5x1 − 3x2 − 8x3 − 6x4 + 4x1x2 + 8x1x3 + 2x2x3 + 10x3x4 with the decision variables xj being binary. A few observations: 1 f has a linear part, −5x1 − 3x2 − 8x3 − 6x4 and a quadratic part 4x1x2 + 8x1x3 + 2x2x3 + 10x3x4. 2 Since binary variables satisfy xj = x2 j , the linear part is rewritten: −5x2 1 − 3x2 2 − 8x2 3 − 6x2 4. 3 We may rewrite the model as (using a full, symmetric Q): f = ( x1 x2 x3 x4 )      −5 2 4 0 2 −3 1 0 4 1 −8 5 0 0 5 −6           x1 x2 x3 x4      Shir Tel-Hai: intro2QC (199934) Spring 2025 15 / 19 -- 15 of 19 -- illustrative QUBO solved The attained f is in a valid QUBO form, that is, constraints-free except for the binary requirement. We state that f has been “qubified”. Solving a QUBO model is N P-hard in general, but state-of-the-art sol",
+    "createdAt": "2026-07-10T11:26:17.513Z"
+  },
+  {
+    "id": "a9c4a4c7-6a01-4ad7-8dc7-fee67ee25d7c",
+    "documentId": "857852de-6e69-45a9-a1cf-98ff9b30254a",
+    "chunkIndex": 9,
+    "text": "nts-free except for the binary requirement. We state that f has been “qubified”. Solving a QUBO model is N P-hard in general, but state-of-the-art solvers (e.g., commercial solvers such as CPLEX or Gurobi) are capable of obtaining good solutions. The current model is solved by x∗ =      1 0 0 1      f ∗ = −11 Shir Tel-Hai: intro2QC (199934) Spring 2025 16 / 19 -- 16 of 19 -- the MAX-CUT problem The “Max-Cut” problem is one of the most famous problems in Combinatorial Optimization. Formally, the MAX-CUT problem involves finding a partition of the vertices of a graph G = (V, E) into two disjoint subsets such that the number of edges between the two subsets is maximized. For each vertex vi ∈ V , let xi be a binary decision variable such that: • xi = 0 if vertex vi is in subset V0 • xi = 1 if vertex vi is in subset V1 The edge (i, j) is cut if xi 6 = xj , which is indicated by xi +",
+    "createdAt": "2026-07-10T11:26:17.514Z"
+  },
+  {
+    "id": "7b69dc08-98b3-4207-b6b0-f6446bf8f78c",
+    "documentId": "857852de-6e69-45a9-a1cf-98ff9b30254a",
+    "chunkIndex": 10,
+    "text": "uch that: • xi = 0 if vertex vi is in subset V0 • xi = 1 if vertex vi is in subset V1 The edge (i, j) is cut if xi 6 = xj , which is indicated by xi + xj − 2xixj . Shir Tel-Hai: intro2QC (199934) Spring 2025 17 / 19 -- 17 of 19 -- MAX-CUT as a QUBO The objective function may be formulated as minimizing the sum over xi(1 − xj ) + xj (1 − xi): f (x) = − ∑ (i,j)∈E (xi + xj − 2xixj ) = − ∑ (i,j)∈E (x2 i + x2 j − 2xixj ) 7 → min Accordingly, the elements of the matrix Q are defined as follows: Qij =        deg(i) if i = j −2 if (i, j) ∈ E 0 otherwise Overall, given a graph G, the MAX-CUT problem may be formulated as a QUBO: max ∑ (i,j)∈E (x2 i + x2 j − 2xixj ) = min xT Qx Shir Tel-Hai: intro2QC (199934) Spring 2025 18 / 19 -- 18 of 19 -- to be continued... Shir Tel-Hai: intro2QC (199934) Spring 2025 19 / 19 -- 19 of 19 --",
+    "createdAt": "2026-07-10T11:26:17.514Z"
+  },
+  {
+    "id": "df8de908-0077-4416-8714-327f56cefbe3",
+    "documentId": "857852de-6e69-45a9-a1cf-98ff9b30254a",
+    "chunkIndex": 11,
+    "text": "to be continued... Shir Tel-Hai: intro2QC (199934) Spring 2025 19 / 19 -- 19 of 19 --",
+    "createdAt": "2026-07-10T11:26:17.514Z"
+  },
+  {
+    "id": "341d1d54-7158-415c-8466-9c0f3b176dee",
+    "documentId": "d564dbdb-ea1b-4610-8bc8-0581df955713",
+    "chunkIndex": 0,
+    "text": "Tel-Hai College - Course 199934 Introduction to Quantum Computing Lecture-07 Prof. Ofer Shir ofersh@telhai.ac.il Spring 2025 Shir Tel-Hai: intro2QC (199934) Spring 2025 1 / 19 -- 1 of 19 -- Quantum Optimization Approaches There are two primary approaches to quantum optimization: 1 Quantum Annealing: This approach, exemplified by D-Wave Systems, leverages a physical process to find the ground state of a quantum system. It is well-suited for combinatorial optimization problems. 2 Gate-based Quantum Computing: This approach, employed by companies like IBM and Google, uses quantum gates to manipulate qubits and solve optimization problems. It offers greater flexibility but requires more complex algorithms. Shir Tel-Hai: intro2QC (199934) Spring 2025 2 / 19 -- 2 of 19 -- Quantum Optimization by Annealing based on (i) ACM’s GECCO “Introduction to Quantum Optimization” tutorial by A. Moraglio &",
+    "createdAt": "2026-07-10T11:26:57.067Z"
+  },
+  {
+    "id": "a6670d99-2fc4-49ca-8b31-e2e059553078",
+    "documentId": "d564dbdb-ea1b-4610-8bc8-0581df955713",
+    "chunkIndex": 1,
+    "text": " 2025 2 / 19 -- 2 of 19 -- Quantum Optimization by Annealing based on (i) ACM’s GECCO “Introduction to Quantum Optimization” tutorial by A. Moraglio & F. Chicano, (ii) “A Tutorial on Formulating and Using QUBO Models” by F. Glover & G. Kochenberger & Y. Du, and (iii) D-Wave’s documentation. Shir Tel-Hai: intro2QC (199934) Spring 2025 3 / 19 -- 3 of 19 -- quantum optimization by annealing (i) adiabatic theorem (ii) QUBO formulations (iii) use-cases Shir Tel-Hai: intro2QC (199934) Spring 2025 4 / 19 -- 4 of 19 -- back to Hamilton & Schr¨ odinger The Hamiltonian completely describes the physical system, representing its energy function: H := ∑ n εn |En〉 〈En| that is, its diagonalization provides the energy eigenstates of the system, {|En〉} as well as the quantum energy spectrum {εn}. The Schr¨odinger equation defines the time evolution of the system (P6 @ Lecture-1), relying on the Hamilton",
+    "createdAt": "2026-07-10T11:26:57.067Z"
+  },
+  {
+    "id": "fd7336af-37eb-4677-964c-017d4e3f7fee",
+    "documentId": "d564dbdb-ea1b-4610-8bc8-0581df955713",
+    "chunkIndex": 2,
+    "text": "well as the quantum energy spectrum {εn}. The Schr¨odinger equation defines the time evolution of the system (P6 @ Lecture-1), relying on the Hamiltonian: iℏ ∂ ∂t |ψ (t)〉 = H(t) |ψ (t)〉 . (1) Shir Tel-Hai: intro2QC (199934) Spring 2025 5 / 19 -- 5 of 19 -- the Ising model • Definition: Simple model of interacting magnetic spins on a lattice. • Spins: Each lattice site i has a spin si, which can be either +1 (spin up) or −1 (spin down). • Interactions via Nearest-Neighbor Coupling (Jij ): Spins interact only with their immediate neighbors. J > 0 (Ferromagnetic – spins tend to align) or J < 0 ( Antiferromagnetic – spins anti-align) • External Magnetic Field (h): Spins also interact with an external magnetic field. • Hamiltonian: The energy of the system is given by: H = − ∑ 〈i,j〉 Jij sisj − μ ∑ i hisi • Significance: Fundamental model for understanding critical phenomena and statistical me",
+    "createdAt": "2026-07-10T11:26:57.067Z"
+  },
+  {
+    "id": "c035717a-d987-4ce9-95e5-180446fd1aa3",
+    "documentId": "d564dbdb-ea1b-4610-8bc8-0581df955713",
+    "chunkIndex": 3,
+    "text": " the system is given by: H = − ∑ 〈i,j〉 Jij sisj − μ ∑ i hisi • Significance: Fundamental model for understanding critical phenomena and statistical mechanics – but also in neural networks, social modeling. Shir Tel-Hai: intro2QC (199934) Spring 2025 6 / 19 -- 6 of 19 -- 2D Ising: general scheme Particular configurations are defined by instantiations of Jij and hi: Shir Tel-Hai: intro2QC (199934) Spring 2025 7 / 19 -- 7 of 19 -- Adiabatic Theorem and Quantum Annealing (1/2) Adiabatic Theorem: • States that a quantum system remains in its instantaneous ground state if the Hamiltonian changes slowly enough. • Let H(t) denote the Hamiltonian, then given a state |ψ(t)〉 H(t)|ψ(t)〉 = E(t)|ψ(t)〉 • As t evolves from 0 to T , if the evolution is slow, the system stays in the ground state. Quantum Annealing: • A method to solve optimization problems by evolving a quantum system from a simple initia",
+    "createdAt": "2026-07-10T11:26:57.067Z"
+  },
+  {
+    "id": "0608d9b3-d7aa-4082-810a-35f998ffdbf2",
+    "documentId": "d564dbdb-ea1b-4610-8bc8-0581df955713",
+    "chunkIndex": 4,
+    "text": ", the system stays in the ground state. Quantum Annealing: • A method to solve optimization problems by evolving a quantum system from a simple initial Hamiltonian Hi to a final Hamiltonian Hf encoding the problem. • The time-dependent Hamiltonian is given by: H(t) = (1 − s(t))Hi + s(t)Hf where s(t) interpolates from 0 to 1 as t goes from 0 to T . Shir Tel-Hai: intro2QC (199934) Spring 2025 8 / 19 -- 8 of 19 -- Adiabatic Theorem and Quantum Annealing (2/2) Initial and Final Hamiltonians: • Initial Hamiltonian Hi: A simple Hamiltonian whose ground state is easy to prepare. Hi = − ∑ i sx i • Final Hamiltonian Hf : Encodes the optimization problem, Hf = − ∑ 〈i,j〉 Jij sz i sz j − ∑ i hisz i where Jij and hi represent the problem constraints and local fields. Adiabatic Condition: • To ensure the system remains in the ground state, the evolution must be slow enough: dH(t) dt \u001c ∆2 where ∆ is th",
+    "createdAt": "2026-07-10T11:26:57.067Z"
+  },
+  {
+    "id": "f9e47dbb-e94c-4e87-b859-5b05908379d8",
+    "documentId": "d564dbdb-ea1b-4610-8bc8-0581df955713",
+    "chunkIndex": 5,
+    "text": " local fields. Adiabatic Condition: • To ensure the system remains in the ground state, the evolution must be slow enough: dH(t) dt \u001c ∆2 where ∆ is the energy gap between the ground state and first excited state. Shir Tel-Hai: intro2QC (199934) Spring 2025 9 / 19 -- 9 of 19 -- Quadratic Unconstrained Binary Optimization The Quadratic Unconstrained Binary Optimization (QUBO) problem can be formulated as finding a binary vector x ∈ {0, 1}n that solves: minimize xT Qx Q is an n × n matrix of real coefficients representing the quadratic terms: A matrix where each element Qij represents the interaction between the binary variables xi and xj . The idea: draw analogy Ising model ⇐⇒ QUBO optimization: [Ising]: ∑ i,j Jij sisj − ∑ i hisi ⇐⇒ [QUBO]: xT Qx Shir Tel-Hai: intro2QC (199934) Spring 2025 10 / 19 -- 10 of 19 -- topology Unlike theoretical modeling, in quantum annealing hardware there are ",
+    "createdAt": "2026-07-10T11:26:57.067Z"
+  },
+  {
+    "id": "f302215d-6108-4d3d-bd49-6de342fc1986",
+    "documentId": "d564dbdb-ea1b-4610-8bc8-0581df955713",
+    "chunkIndex": 6,
+    "text": "T Qx Shir Tel-Hai: intro2QC (199934) Spring 2025 10 / 19 -- 10 of 19 -- topology Unlike theoretical modeling, in quantum annealing hardware there are no connections among all qubit pairs (D-Wave 2000Q QPU): inner-cell topology intra-cell topology Shir Tel-Hai: intro2QC (199934) Spring 2025 11 / 19 -- 11 of 19 -- embedding To solve a problem expressed as an Ising model on a quantum computer, the variables of the Ising model needs to be assigned to physical qubits. The interaction strength between two qubits can be controlled only if there is a physical connection between two qubits. This means that variables in the Ising model that appear together in a quadratic term must be assigned to qubits with a physical connection. This is done by a procedure by the name of “Minor Embedding”. Shir Tel-Hai: intro2QC (199934) Spring 2025 12 / 19 -- 12 of 19 -- D-Wave’s Pegasus architecture Shir Tel-Ha",
+    "createdAt": "2026-07-10T11:26:57.067Z"
+  },
+  {
+    "id": "17d47554-fdc0-4b34-8722-7cabd6683315",
+    "documentId": "d564dbdb-ea1b-4610-8bc8-0581df955713",
+    "chunkIndex": 7,
+    "text": "ocedure by the name of “Minor Embedding”. Shir Tel-Hai: intro2QC (199934) Spring 2025 12 / 19 -- 12 of 19 -- D-Wave’s Pegasus architecture Shir Tel-Hai: intro2QC (199934) Spring 2025 13 / 19 -- 13 of 19 -- basic QUBO problem formulation The QUBO model is expressed by the optimization problem: minimize/maximize f := xT Qx x is an n-dimensional binary vector (x ∈ {0, 1}n): A vector where each element is either 0 or 1. The elements represent binary decision variables in the optimization problem. The Q matrix is assumed to be symmetric or in upper triangular form: Symmetric form: For all i and j except i = j, replace qij by (qij + qji)/2. Upper triangular form: For all i and j with j > i, replace qij by qij + qji. Then replace all qij for j < i by 0. Shir Tel-Hai: intro2QC (199934) Spring 2025 14 / 19 -- 14 of 19 -- illustrative QUBO formed min f = −5x1 − 3x2 − 8x3 − 6x4 + 4x1x2 + 8x1x3 + 2x",
+    "createdAt": "2026-07-10T11:26:57.068Z"
+  },
+  {
+    "id": "471fc9b5-b3ae-413c-a071-6a5fd9125915",
+    "documentId": "d564dbdb-ea1b-4610-8bc8-0581df955713",
+    "chunkIndex": 8,
+    "text": " by 0. Shir Tel-Hai: intro2QC (199934) Spring 2025 14 / 19 -- 14 of 19 -- illustrative QUBO formed min f = −5x1 − 3x2 − 8x3 − 6x4 + 4x1x2 + 8x1x3 + 2x2x3 + 10x3x4 with the decision variables xj being binary. A few observations: 1 f has a linear part, −5x1 − 3x2 − 8x3 − 6x4 and a quadratic part 4x1x2 + 8x1x3 + 2x2x3 + 10x3x4. 2 Since binary variables satisfy xj = x2 j , the linear part is rewritten: −5x2 1 − 3x2 2 − 8x2 3 − 6x2 4. 3 We may rewrite the model as (using a full, symmetric Q): f = ( x1 x2 x3 x4 )      −5 2 4 0 2 −3 1 0 4 1 −8 5 0 0 5 −6           x1 x2 x3 x4      Shir Tel-Hai: intro2QC (199934) Spring 2025 15 / 19 -- 15 of 19 -- illustrative QUBO solved The attained f is in a valid QUBO form, that is, constraints-free except for the binary requirement. We state that f has been “qubified”. Solving a QUBO model is N P-hard in general, but state-of-the-art sol",
+    "createdAt": "2026-07-10T11:26:57.068Z"
+  },
+  {
+    "id": "7f9995bd-78d6-444d-99b5-a85ffaee959f",
+    "documentId": "d564dbdb-ea1b-4610-8bc8-0581df955713",
+    "chunkIndex": 9,
+    "text": "nts-free except for the binary requirement. We state that f has been “qubified”. Solving a QUBO model is N P-hard in general, but state-of-the-art solvers (e.g., commercial solvers such as CPLEX or Gurobi) are capable of obtaining good solutions. The current model is solved by x∗ =      1 0 0 1      f ∗ = −11 Shir Tel-Hai: intro2QC (199934) Spring 2025 16 / 19 -- 16 of 19 -- the MAX-CUT problem The “Max-Cut” problem is one of the most famous problems in Combinatorial Optimization. Formally, the MAX-CUT problem involves finding a partition of the vertices of a graph G = (V, E) into two disjoint subsets such that the number of edges between the two subsets is maximized. For each vertex vi ∈ V , let xi be a binary decision variable such that: • xi = 0 if vertex vi is in subset V0 • xi = 1 if vertex vi is in subset V1 The edge (i, j) is cut if xi 6 = xj , which is indicated by xi +",
+    "createdAt": "2026-07-10T11:26:57.068Z"
+  },
+  {
+    "id": "53d58969-2f54-4385-bdb1-6ebedd6b7ad1",
+    "documentId": "d564dbdb-ea1b-4610-8bc8-0581df955713",
+    "chunkIndex": 10,
+    "text": "uch that: • xi = 0 if vertex vi is in subset V0 • xi = 1 if vertex vi is in subset V1 The edge (i, j) is cut if xi 6 = xj , which is indicated by xi + xj − 2xixj . Shir Tel-Hai: intro2QC (199934) Spring 2025 17 / 19 -- 17 of 19 -- MAX-CUT as a QUBO The objective function may be formulated as minimizing the sum over xi(1 − xj ) + xj (1 − xi): f (x) = − ∑ (i,j)∈E (xi + xj − 2xixj ) = − ∑ (i,j)∈E (x2 i + x2 j − 2xixj ) 7 → min Accordingly, the elements of the matrix Q are defined as follows: Qij =        deg(i) if i = j −2 if (i, j) ∈ E 0 otherwise Overall, given a graph G, the MAX-CUT problem may be formulated as a QUBO: max ∑ (i,j)∈E (x2 i + x2 j − 2xixj ) = min xT Qx Shir Tel-Hai: intro2QC (199934) Spring 2025 18 / 19 -- 18 of 19 -- to be continued... Shir Tel-Hai: intro2QC (199934) Spring 2025 19 / 19 -- 19 of 19 --",
+    "createdAt": "2026-07-10T11:26:57.068Z"
+  },
+  {
+    "id": "4db772c3-c0ce-4ccb-b9c9-79f823d0eaf0",
+    "documentId": "d564dbdb-ea1b-4610-8bc8-0581df955713",
+    "chunkIndex": 11,
+    "text": "to be continued... Shir Tel-Hai: intro2QC (199934) Spring 2025 19 / 19 -- 19 of 19 --",
+    "createdAt": "2026-07-10T11:26:57.068Z"
+  },
+  {
+    "id": "e5d86032-2924-4b08-9065-ddaa535387f4",
+    "documentId": "1c839363-d16c-4ae3-9786-e2037465280f",
+    "chunkIndex": 0,
+    "text": "Tel-Hai College - Course 199934 Introduction to Quantum Computing Lecture-07 Prof. Ofer Shir ofersh@telhai.ac.il Spring 2025 Shir Tel-Hai: intro2QC (199934) Spring 2025 1 / 19 -- 1 of 19 -- Quantum Optimization Approaches There are two primary approaches to quantum optimization: 1 Quantum Annealing: This approach, exemplified by D-Wave Systems, leverages a physical process to find the ground state of a quantum system. It is well-suited for combinatorial optimization problems. 2 Gate-based Quantum Computing: This approach, employed by companies like IBM and Google, uses quantum gates to manipulate qubits and solve optimization problems. It offers greater flexibility but requires more complex algorithms. Shir Tel-Hai: intro2QC (199934) Spring 2025 2 / 19 -- 2 of 19 -- Quantum Optimization by Annealing based on (i) ACM’s GECCO “Introduction to Quantum Optimization” tutorial by A. Moraglio &",
+    "createdAt": "2026-07-10T11:31:00.003Z"
+  },
+  {
+    "id": "10fd206b-1cdd-43a9-ae52-4eab3f3d38a9",
+    "documentId": "1c839363-d16c-4ae3-9786-e2037465280f",
+    "chunkIndex": 1,
+    "text": " 2025 2 / 19 -- 2 of 19 -- Quantum Optimization by Annealing based on (i) ACM’s GECCO “Introduction to Quantum Optimization” tutorial by A. Moraglio & F. Chicano, (ii) “A Tutorial on Formulating and Using QUBO Models” by F. Glover & G. Kochenberger & Y. Du, and (iii) D-Wave’s documentation. Shir Tel-Hai: intro2QC (199934) Spring 2025 3 / 19 -- 3 of 19 -- quantum optimization by annealing (i) adiabatic theorem (ii) QUBO formulations (iii) use-cases Shir Tel-Hai: intro2QC (199934) Spring 2025 4 / 19 -- 4 of 19 -- back to Hamilton & Schr¨ odinger The Hamiltonian completely describes the physical system, representing its energy function: H := ∑ n εn |En〉 〈En| that is, its diagonalization provides the energy eigenstates of the system, {|En〉} as well as the quantum energy spectrum {εn}. The Schr¨odinger equation defines the time evolution of the system (P6 @ Lecture-1), relying on the Hamilton",
+    "createdAt": "2026-07-10T11:31:00.003Z"
+  },
+  {
+    "id": "ee2cd82f-616e-492f-8bea-5ff7a8367e59",
+    "documentId": "1c839363-d16c-4ae3-9786-e2037465280f",
+    "chunkIndex": 2,
+    "text": "well as the quantum energy spectrum {εn}. The Schr¨odinger equation defines the time evolution of the system (P6 @ Lecture-1), relying on the Hamiltonian: iℏ ∂ ∂t |ψ (t)〉 = H(t) |ψ (t)〉 . (1) Shir Tel-Hai: intro2QC (199934) Spring 2025 5 / 19 -- 5 of 19 -- the Ising model • Definition: Simple model of interacting magnetic spins on a lattice. • Spins: Each lattice site i has a spin si, which can be either +1 (spin up) or −1 (spin down). • Interactions via Nearest-Neighbor Coupling (Jij ): Spins interact only with their immediate neighbors. J > 0 (Ferromagnetic – spins tend to align) or J < 0 ( Antiferromagnetic – spins anti-align) • External Magnetic Field (h): Spins also interact with an external magnetic field. • Hamiltonian: The energy of the system is given by: H = − ∑ 〈i,j〉 Jij sisj − μ ∑ i hisi • Significance: Fundamental model for understanding critical phenomena and statistical me",
+    "createdAt": "2026-07-10T11:31:00.003Z"
+  },
+  {
+    "id": "6ca452fc-dc98-41c4-9838-ce291075bb86",
+    "documentId": "1c839363-d16c-4ae3-9786-e2037465280f",
+    "chunkIndex": 3,
+    "text": " the system is given by: H = − ∑ 〈i,j〉 Jij sisj − μ ∑ i hisi • Significance: Fundamental model for understanding critical phenomena and statistical mechanics – but also in neural networks, social modeling. Shir Tel-Hai: intro2QC (199934) Spring 2025 6 / 19 -- 6 of 19 -- 2D Ising: general scheme Particular configurations are defined by instantiations of Jij and hi: Shir Tel-Hai: intro2QC (199934) Spring 2025 7 / 19 -- 7 of 19 -- Adiabatic Theorem and Quantum Annealing (1/2) Adiabatic Theorem: • States that a quantum system remains in its instantaneous ground state if the Hamiltonian changes slowly enough. • Let H(t) denote the Hamiltonian, then given a state |ψ(t)〉 H(t)|ψ(t)〉 = E(t)|ψ(t)〉 • As t evolves from 0 to T , if the evolution is slow, the system stays in the ground state. Quantum Annealing: • A method to solve optimization problems by evolving a quantum system from a simple initia",
+    "createdAt": "2026-07-10T11:31:00.003Z"
+  },
+  {
+    "id": "35a67d83-b7e8-41d1-98db-8f5a7f54176d",
+    "documentId": "1c839363-d16c-4ae3-9786-e2037465280f",
+    "chunkIndex": 4,
+    "text": ", the system stays in the ground state. Quantum Annealing: • A method to solve optimization problems by evolving a quantum system from a simple initial Hamiltonian Hi to a final Hamiltonian Hf encoding the problem. • The time-dependent Hamiltonian is given by: H(t) = (1 − s(t))Hi + s(t)Hf where s(t) interpolates from 0 to 1 as t goes from 0 to T . Shir Tel-Hai: intro2QC (199934) Spring 2025 8 / 19 -- 8 of 19 -- Adiabatic Theorem and Quantum Annealing (2/2) Initial and Final Hamiltonians: • Initial Hamiltonian Hi: A simple Hamiltonian whose ground state is easy to prepare. Hi = − ∑ i sx i • Final Hamiltonian Hf : Encodes the optimization problem, Hf = − ∑ 〈i,j〉 Jij sz i sz j − ∑ i hisz i where Jij and hi represent the problem constraints and local fields. Adiabatic Condition: • To ensure the system remains in the ground state, the evolution must be slow enough: dH(t) dt \u001c ∆2 where ∆ is th",
+    "createdAt": "2026-07-10T11:31:00.003Z"
+  },
+  {
+    "id": "5dbe2018-caa7-4efb-a9f7-6901cfeaf099",
+    "documentId": "1c839363-d16c-4ae3-9786-e2037465280f",
+    "chunkIndex": 5,
+    "text": " local fields. Adiabatic Condition: • To ensure the system remains in the ground state, the evolution must be slow enough: dH(t) dt \u001c ∆2 where ∆ is the energy gap between the ground state and first excited state. Shir Tel-Hai: intro2QC (199934) Spring 2025 9 / 19 -- 9 of 19 -- Quadratic Unconstrained Binary Optimization The Quadratic Unconstrained Binary Optimization (QUBO) problem can be formulated as finding a binary vector x ∈ {0, 1}n that solves: minimize xT Qx Q is an n × n matrix of real coefficients representing the quadratic terms: A matrix where each element Qij represents the interaction between the binary variables xi and xj . The idea: draw analogy Ising model ⇐⇒ QUBO optimization: [Ising]: ∑ i,j Jij sisj − ∑ i hisi ⇐⇒ [QUBO]: xT Qx Shir Tel-Hai: intro2QC (199934) Spring 2025 10 / 19 -- 10 of 19 -- topology Unlike theoretical modeling, in quantum annealing hardware there are ",
+    "createdAt": "2026-07-10T11:31:00.003Z"
+  },
+  {
+    "id": "d6ec7695-8423-45d0-9e74-b3860d5b4d59",
+    "documentId": "1c839363-d16c-4ae3-9786-e2037465280f",
+    "chunkIndex": 6,
+    "text": "T Qx Shir Tel-Hai: intro2QC (199934) Spring 2025 10 / 19 -- 10 of 19 -- topology Unlike theoretical modeling, in quantum annealing hardware there are no connections among all qubit pairs (D-Wave 2000Q QPU): inner-cell topology intra-cell topology Shir Tel-Hai: intro2QC (199934) Spring 2025 11 / 19 -- 11 of 19 -- embedding To solve a problem expressed as an Ising model on a quantum computer, the variables of the Ising model needs to be assigned to physical qubits. The interaction strength between two qubits can be controlled only if there is a physical connection between two qubits. This means that variables in the Ising model that appear together in a quadratic term must be assigned to qubits with a physical connection. This is done by a procedure by the name of “Minor Embedding”. Shir Tel-Hai: intro2QC (199934) Spring 2025 12 / 19 -- 12 of 19 -- D-Wave’s Pegasus architecture Shir Tel-Ha",
+    "createdAt": "2026-07-10T11:31:00.003Z"
+  },
+  {
+    "id": "c4753674-a7ee-4f8b-aae1-6fa2f68b5555",
+    "documentId": "1c839363-d16c-4ae3-9786-e2037465280f",
+    "chunkIndex": 7,
+    "text": "ocedure by the name of “Minor Embedding”. Shir Tel-Hai: intro2QC (199934) Spring 2025 12 / 19 -- 12 of 19 -- D-Wave’s Pegasus architecture Shir Tel-Hai: intro2QC (199934) Spring 2025 13 / 19 -- 13 of 19 -- basic QUBO problem formulation The QUBO model is expressed by the optimization problem: minimize/maximize f := xT Qx x is an n-dimensional binary vector (x ∈ {0, 1}n): A vector where each element is either 0 or 1. The elements represent binary decision variables in the optimization problem. The Q matrix is assumed to be symmetric or in upper triangular form: Symmetric form: For all i and j except i = j, replace qij by (qij + qji)/2. Upper triangular form: For all i and j with j > i, replace qij by qij + qji. Then replace all qij for j < i by 0. Shir Tel-Hai: intro2QC (199934) Spring 2025 14 / 19 -- 14 of 19 -- illustrative QUBO formed min f = −5x1 − 3x2 − 8x3 − 6x4 + 4x1x2 + 8x1x3 + 2x",
+    "createdAt": "2026-07-10T11:31:00.003Z"
+  },
+  {
+    "id": "55b511f0-6b8c-4149-9811-bf8b1f322232",
+    "documentId": "1c839363-d16c-4ae3-9786-e2037465280f",
+    "chunkIndex": 8,
+    "text": " by 0. Shir Tel-Hai: intro2QC (199934) Spring 2025 14 / 19 -- 14 of 19 -- illustrative QUBO formed min f = −5x1 − 3x2 − 8x3 − 6x4 + 4x1x2 + 8x1x3 + 2x2x3 + 10x3x4 with the decision variables xj being binary. A few observations: 1 f has a linear part, −5x1 − 3x2 − 8x3 − 6x4 and a quadratic part 4x1x2 + 8x1x3 + 2x2x3 + 10x3x4. 2 Since binary variables satisfy xj = x2 j , the linear part is rewritten: −5x2 1 − 3x2 2 − 8x2 3 − 6x2 4. 3 We may rewrite the model as (using a full, symmetric Q): f = ( x1 x2 x3 x4 )      −5 2 4 0 2 −3 1 0 4 1 −8 5 0 0 5 −6           x1 x2 x3 x4      Shir Tel-Hai: intro2QC (199934) Spring 2025 15 / 19 -- 15 of 19 -- illustrative QUBO solved The attained f is in a valid QUBO form, that is, constraints-free except for the binary requirement. We state that f has been “qubified”. Solving a QUBO model is N P-hard in general, but state-of-the-art sol",
+    "createdAt": "2026-07-10T11:31:00.003Z"
+  },
+  {
+    "id": "1afa5b3d-40e7-4af3-abf6-8643fc61ebad",
+    "documentId": "1c839363-d16c-4ae3-9786-e2037465280f",
+    "chunkIndex": 9,
+    "text": "nts-free except for the binary requirement. We state that f has been “qubified”. Solving a QUBO model is N P-hard in general, but state-of-the-art solvers (e.g., commercial solvers such as CPLEX or Gurobi) are capable of obtaining good solutions. The current model is solved by x∗ =      1 0 0 1      f ∗ = −11 Shir Tel-Hai: intro2QC (199934) Spring 2025 16 / 19 -- 16 of 19 -- the MAX-CUT problem The “Max-Cut” problem is one of the most famous problems in Combinatorial Optimization. Formally, the MAX-CUT problem involves finding a partition of the vertices of a graph G = (V, E) into two disjoint subsets such that the number of edges between the two subsets is maximized. For each vertex vi ∈ V , let xi be a binary decision variable such that: • xi = 0 if vertex vi is in subset V0 • xi = 1 if vertex vi is in subset V1 The edge (i, j) is cut if xi 6 = xj , which is indicated by xi +",
+    "createdAt": "2026-07-10T11:31:00.003Z"
+  },
+  {
+    "id": "d50fec2b-8ed2-4c7d-b0db-5efff296a9ce",
+    "documentId": "1c839363-d16c-4ae3-9786-e2037465280f",
+    "chunkIndex": 10,
+    "text": "uch that: • xi = 0 if vertex vi is in subset V0 • xi = 1 if vertex vi is in subset V1 The edge (i, j) is cut if xi 6 = xj , which is indicated by xi + xj − 2xixj . Shir Tel-Hai: intro2QC (199934) Spring 2025 17 / 19 -- 17 of 19 -- MAX-CUT as a QUBO The objective function may be formulated as minimizing the sum over xi(1 − xj ) + xj (1 − xi): f (x) = − ∑ (i,j)∈E (xi + xj − 2xixj ) = − ∑ (i,j)∈E (x2 i + x2 j − 2xixj ) 7 → min Accordingly, the elements of the matrix Q are defined as follows: Qij =        deg(i) if i = j −2 if (i, j) ∈ E 0 otherwise Overall, given a graph G, the MAX-CUT problem may be formulated as a QUBO: max ∑ (i,j)∈E (x2 i + x2 j − 2xixj ) = min xT Qx Shir Tel-Hai: intro2QC (199934) Spring 2025 18 / 19 -- 18 of 19 -- to be continued... Shir Tel-Hai: intro2QC (199934) Spring 2025 19 / 19 -- 19 of 19 --",
+    "createdAt": "2026-07-10T11:31:00.003Z"
+  },
+  {
+    "id": "3f15dee0-2fe3-48bb-8c83-2947831171b7",
+    "documentId": "1c839363-d16c-4ae3-9786-e2037465280f",
+    "chunkIndex": 11,
+    "text": "to be continued... Shir Tel-Hai: intro2QC (199934) Spring 2025 19 / 19 -- 19 of 19 --",
+    "createdAt": "2026-07-10T11:31:00.003Z"
+  }
+]

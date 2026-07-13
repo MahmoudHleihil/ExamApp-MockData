@@ -1,0 +1,129 @@
+name: Server Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mcp-confirmation-tests:
+    name: MCP confirmation tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: server
+
+    services:
+      postgres:
+        image: postgres:17
+
+        env:
+          POSTGRES_DB: exam_app_test_db
+          POSTGRES_USER: exam_app_user
+          POSTGRES_PASSWORD: test_password
+
+        ports:
+          - 5432:5432
+
+        options: >-
+          --health-cmd "pg_isready
+          -U exam_app_user
+          -d exam_app_test_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+
+      DATABASE_URL: >-
+        postgresql://exam_app_user:test_password@localhost:5432/exam_app_test_db
+
+      DB_SSL: "false"
+      DB_POOL_MAX: "5"
+      DB_IDLE_TIMEOUT_MS: "10000"
+      DB_CONNECTION_TIMEOUT_MS: "5000"
+
+      MCP_CONFIRMATION_TTL_SECONDS: "300"
+      MCP_AUDIT_RETENTION_DAYS: "90"
+
+      # Prevent unrelated AI modules from failing during import.
+      # The integration tests must not make real provider requests.
+      OPENROUTER_API_KEY: test-placeholder-key
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Show PostgreSQL connection target
+        run: |
+          node -e "
+          const url = new URL(process.env.DATABASE_URL);
+          console.log({
+            host: url.hostname,
+            port: url.port,
+            database: url.pathname.slice(1),
+            user: url.username
+          });
+          "
+
+      - name: Run test database migrations
+        run: npm run db:migrate:test
+
+      - name: Verify required tables
+        env:
+          PGPASSWORD: test_password
+        run: |
+          REQUIRED_TABLES="
+          users
+          exams
+          questions
+          documents
+          mcp_confirmations
+          mcp_audit_logs
+          "
+
+          EXISTING_TABLES=$(psql \
+            --host=localhost \
+            --port=5432 \
+            --username=exam_app_user \
+            --dbname=exam_app_test_db \
+            --tuples-only \
+            --no-align \
+            --command="
+              SELECT tablename
+              FROM pg_tables
+              WHERE schemaname = 'public';
+            ")
+
+          echo "Existing tables:"
+          echo "$EXISTING_TABLES"
+
+          for table in $REQUIRED_TABLES; do
+            if ! echo "$EXISTING_TABLES" |
+              grep --line-regexp --quiet "$table"; then
+              echo "Missing required table: $table"
+              exit 1
+            fi
+          done
+
+      - name: Run MCP confirmation integration tests
+        run: npm run test:mcp-confirmations

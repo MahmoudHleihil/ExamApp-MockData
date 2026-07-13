@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { userService } from '../api/userService';
 import { examService } from '../api/examService';
 import { notificationService } from '../api/notificationService';
+import AIChatbot from './AIChatbot';
+import FloatingFileUpload from "./documents/FloatingFileUpload";
 
 const AdminDashboard = ({ user }) => {
   const [stats, setStats] = useState(null);
@@ -13,6 +15,14 @@ const AdminDashboard = ({ user }) => {
   // New Admin form state
   const [newAdmin, setNewAdmin] = useState({ fullName: '', email: '', password: '' });
   const [adminCreating, setAdminCreating] = useState(false);
+
+  const [chatPrompt, setChatPrompt] = useState("");
+
+  const handleGenerateFromMaterial = (document) => {
+    setChatPrompt(
+      `Generate a medium-difficulty exam with 10 multiple-choice questions using only the uploaded PDF "${document.title}". Save it as a draft.`
+    );
+  };
 
   // טעינת ניתונים מ db 
   const fetchData = async () => {
@@ -331,6 +341,9 @@ const AdminDashboard = ({ user }) => {
           </div>
         )}
       </div>
+
+      <FloatingFileUpload onGenerateExam={handleGenerateFromMaterial} />
+      <AIChatbot user={user} context={{ dashboard: "admin" }} initialPrompt={chatPrompt} />
     </div>
   );
 };
