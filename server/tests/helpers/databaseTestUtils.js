@@ -250,11 +250,39 @@ export async function documentExists(
   return result.rows[0].exists;
 }
 
-export async function cleanupTestUser(userId) {
-  const client = await pool.connect();
+export async function cleanupTestUser(
+  userId
+) {
+  const client =
+    await pool.connect();
 
   try {
     await client.query("BEGIN");
+
+    /*
+     * Remove submissions graded by this user without
+     * deleting submissions belonging to other users.
+     */
+    await client.query(
+      `
+        UPDATE exam_submissions
+        SET graded_by = NULL
+        WHERE graded_by = $1
+      `,
+      [userId]
+    );
+
+    /*
+     * Remove submissions owned by the test student.
+     * submission_answers are deleted by cascade.
+     */
+    await client.query(
+      `
+        DELETE FROM exam_submissions
+        WHERE student_id = $1
+      `,
+      [userId]
+    );
 
     await client.query(
       `
@@ -296,15 +324,10 @@ export async function cleanupTestUser(userId) {
       [userId]
     );
 
-    await client.query(
-      `
-        DELETE FROM exam_submissions
-        WHERE student_id = $1
-           OR graded_by = $1
-      `,
-      [userId]
-    );
-
+    /*
+     * Questions and submissions for these exams are
+     * removed through ON DELETE CASCADE.
+     */
     await client.query(
       `
         DELETE FROM exams
@@ -328,4 +351,163 @@ export async function cleanupTestUser(userId) {
   } finally {
     client.release();
   }
+}
+
+export async function createTestStudent() {
+  const email =
+    `student-${randomUUID()}@etest.com`;
+
+  const result = await pool.query(
+    `
+      INSERT INTO users (
+        email,
+        password_hash,
+        role,
+        full_name,
+        status,
+        is_super_admin
+      )
+      VALUES (
+        $1,
+        $2,
+        'Student',
+        'Integration Test Student',
+        'active',
+        FALSE
+      )
+      RETURNING
+        id,
+        email,
+        role,
+        full_name
+    `,
+    [
+      email,
+      TEST_PASSWORD_HASH,
+    ]
+  );
+
+  const row = result.rows[0];
+
+  return {
+    id: row.id,
+    email: row.email,
+    role: row.role,
+    fullName: row.full_name,
+  };
+}
+
+export async function createTestAdmin() {
+  const email =
+    `admin-${randomUUID()}@etest.com`;
+
+  const result = await pool.query(
+    `
+      INSERT INTO users (
+        email,
+        password_hash,
+        role,
+        full_name,
+        status,
+        is_super_admin
+      )
+      VALUES (
+        $1,
+        $2,
+        'Admin',
+        'Integration Test Admin',
+        'active',
+        TRUE
+      )
+      RETURNING
+        id,
+        email,
+        role,
+        full_name
+    `,
+    [
+      email,
+      TEST_PASSWORD_HASH,
+    ]
+  );
+
+  const row = result.rows[0];
+
+  return {
+    id: row.id,
+    email: row.email,
+    role: row.role,
+    fullName: row.full_name,
+    isSuperAdmin: true,
+  };
+}
+
+export async function createTestSubmission({
+  examId,
+  studentId,
+  score = 80,
+  maxScore = 100,
+  percentage = 80,
+  status = "graded",
+  isScorePublished = false,
+  isFeedbackVisible = false,
+  feedback = "",
+  gradedBy = null,
+}) {
+  const submissionId =
+    randomUUID();
+
+  const gradedAt = status === "graded" ? new Date() : null;
+
+  const result = await pool.query(
+    `
+      INSERT INTO exam_submissions (
+        id,
+        exam_id,
+        student_id,
+        status,
+        score,
+        max_score,
+        percentage,
+        submitted_at,
+        graded_at,
+        feedback,
+        is_feedback_visible,
+        is_score_published,
+        graded_by
+      )
+      VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        NOW(),
+        $8,
+        $9,
+        $10,
+        $11,
+        $12
+      )
+      RETURNING *
+    `,
+    [
+      submissionId,
+      examId,
+      studentId,
+      status,
+      score,
+      maxScore,
+      percentage,
+      gradedAt,
+      feedback,
+      isFeedbackVisible,
+      isScorePublished,
+      gradedBy,
+    ]
+  );
+
+  return result.rows[0];
 }
