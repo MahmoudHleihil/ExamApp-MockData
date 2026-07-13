@@ -125,5 +125,5 @@ jobs:
             fi
           done
 
-      - name: Run MCP confirmation integration tests
-        run: npm run test:mcp-confirmations
+      - name: Run all integration tests
+        run: npm run test:integration
