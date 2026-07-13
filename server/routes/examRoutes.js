@@ -1,25 +1,101 @@
-import express from 'express';
-import * as examController from '../controllers/examController.js';
-import { authenticate, authorize } from '../middleware/authMiddleware.js';
-import { examValidation } from '../middleware/validationMiddleware.js';
+import express from "express";
+import * as ExamController from "../controllers/examController.js";
+import { authenticate, authorize } from "../middleware/authMiddleware.js";
+import { examValidation } from "../middleware/validationMiddleware.js";
 
 const router = express.Router();
 
-// Publicly authenticated routes (any role)
-router.get('/', authenticate, examController.getAllExams);
-router.get('/:id', authenticate, examController.getExamById);
+/*
+|--------------------------------------------------------------------------
+| Teacher / Admin
+|--------------------------------------------------------------------------
+*/
 
-// Teacher & Admin only
-router.post('/', authenticate, authorize('Teacher', 'Admin'), examValidation, examController.createExam);
-router.put('/:id', authenticate, authorize('Teacher', 'Admin'), examController.updateExam);
-router.delete('/:id', authenticate, authorize('Teacher', 'Admin'), examController.deleteExam);
+router.post(
+    "/",
+    authenticate,
+    authorize("Teacher", "Admin"),
+    examValidation,
+    ExamController.createExam
+);
 
-// Student only
-router.post('/submit', authenticate, authorize('Student'), examController.submitScore);
-router.get('/submissions/student/:studentName', authenticate, authorize('Student', 'Admin'), examController.getSubmissionsByStudent);
+router.put(
+    "/:id",
+    authenticate,
+    authorize("Teacher", "Admin"),
+    ExamController.updateExam
+);
 
-// Submissions management (Teacher & Admin)
-router.get('/submissions/all', authenticate, authorize('Teacher', 'Admin'), examController.getAllSubmissions);
-router.put('/submissions/:id', authenticate, authorize('Teacher', 'Admin'), examController.updateSubmissionFeedback);
+router.delete(
+    "/:id",
+    authenticate,
+    authorize("Teacher", "Admin"),
+    ExamController.deleteExam
+);
+
+/*
+|--------------------------------------------------------------------------
+| Student
+|--------------------------------------------------------------------------
+*/
+
+router.post(
+    "/submit",
+    authenticate,
+    authorize("Student"),
+    ExamController.submitScore
+);
+
+router.get(
+    "/my-submissions",
+    authenticate,
+    authorize("Student"),
+    ExamController.getStudentSubmissions
+);
+
+router.get(
+  "/submissions/student/:studentName",
+  authenticate,
+  authorize("Student", "Admin"),
+  ExamController.getSubmissionsByStudent
+);
+
+/*
+|--------------------------------------------------------------------------
+| Teacher / Admin
+|--------------------------------------------------------------------------
+*/
+
+router.get(
+    "/submissions",
+    authenticate,
+    authorize("Teacher", "Admin"),
+    ExamController.getAllSubmissions
+);
+
+router.put(
+    "/submissions/:id",
+    authenticate,
+    authorize("Teacher", "Admin"),
+    ExamController.updateSubmissionFeedback
+);
+
+/*
+|--------------------------------------------------------------------------
+| Public Authenticated Routes
+|--------------------------------------------------------------------------
+*/
+
+router.get(
+    "/",
+    authenticate,
+    ExamController.getAllExams
+);
+
+router.get(
+    "/:id",
+    authenticate,
+    ExamController.getExamById
+);
 
 export default router;

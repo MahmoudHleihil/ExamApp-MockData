@@ -89,7 +89,8 @@ const NotificationCenter = ({ user }) => {
         break;
 
       case 'approval':
-        navigate('/admin/users');
+        if(user.role === "admin")
+          navigate('/admin/users');
         break;
 
       case 'deletion':

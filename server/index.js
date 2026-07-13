@@ -1,6 +1,8 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
@@ -8,7 +10,10 @@ import examRoutes from './routes/examRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 
-dotenv.config();
+import errorHandler from "./middleware/errorHandler.js";
+
+import chatRoutes from "./routes/chatRoutes.js";
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -64,6 +69,7 @@ app.use('/api/users/register', authLimiter);
 app.use('/api/exams', examRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use("/api/chat", chatRoutes);
 
 app.get('/', (req, res) => {
   res.send('ExamApp Server is running');
@@ -72,6 +78,8 @@ app.get('/', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is healthy' });
 });
+
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

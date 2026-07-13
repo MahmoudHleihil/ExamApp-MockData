@@ -1,70 +1,142 @@
-import { mockDb } from '../data/mockDb.js';
+import NotificationService from
+  "../services/NotificationService.js";
 
-export const getNotifications = async (req, res) => {
+export const getNotifications = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const { userId, role, fullName } = req.query;
-    const notifications = mockDb.notifications.filter(n => 
-      (n.userId === userId) || 
-      (n.role === role) ||
-      (n.studentName === fullName)
-    ).sort((a, b) => new Date(b.time) - new Date(a.time));
+    const notifications =
+      await NotificationService
+        .getNotifications(req.user);
+
     res.json(notifications);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-export const addNotification = async (req, res) => {
-  try {
-    const notification = req.body;
-    const newNotification = {
-      id: Math.random().toString(36).substr(2, 9),
-      time: new Date().toISOString(),
-      read: false,
-      ...notification
-    };
-    mockDb.notifications.unshift(newNotification);
-    res.status(201).json(newNotification);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+export const getUnreadNotifications =
+  async (req, res, next) => {
+    try {
+      const notifications =
+        await NotificationService
+          .getUnreadNotifications(
+            req.user
+          );
 
-export const markAsRead = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const index = mockDb.notifications.findIndex(n => n.id === id);
-    if (index !== -1) {
-      mockDb.notifications[index].read = true;
-      return res.json({ success: true });
+      res.json(notifications);
+    } catch (error) {
+      next(error);
     }
-    res.status(404).json({ message: 'Notification not found' });
+  };
+
+export const getUnreadCount = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const result =
+      await NotificationService
+        .getUnreadCount(req.user);
+
+    res.json(result);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-export const markAllAsRead = async (req, res) => {
+export const createNotification = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const { userId, role } = req.body;
-    mockDb.notifications = mockDb.notifications.map(n => {
-      if (n.userId === userId || n.role === role) {
-        return { ...n, read: true };
-      }
-      return n;
-    });
-    res.json({ success: true });
+    const notification =
+      await NotificationService
+        .createNotification(
+          req.body,
+          req.user
+        );
+
+    res.status(201).json(
+      notification
+    );
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-export const deleteNotification = async (req, res) => {
+export const markAsRead = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const { id } = req.params;
-    mockDb.notifications = mockDb.notifications.filter(n => n.id !== id);
-    res.json({ success: true });
+    const notification =
+      await NotificationService
+        .markAsRead(
+          req.params.id,
+          req.user
+        );
+
+    res.json(notification);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
+  }
+};
+
+export const markAllAsRead = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const result =
+      await NotificationService
+        .markAllAsRead(req.user);
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteNotification = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const result =
+      await NotificationService
+        .deleteNotification(
+          req.params.id,
+          req.user
+        );
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const clearNotifications = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const result =
+      await NotificationService
+        .clearNotifications(
+          req.user
+        );
+
+    res.json(result);
+  } catch (error) {
+    next(error);
   }
 };

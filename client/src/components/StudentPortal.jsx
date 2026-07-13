@@ -8,6 +8,7 @@ import ExamTaker from './student/ExamTaker';
 import ExamResult from './student/ExamResult';
 import FeedbackList from './student/FeedbackList';
 import FeedbackDetail from './student/FeedbackDetail';
+import AIChatbot from './AIChatbot';
 
 const StudentPortal = ({ user }) => {
   const navigate = useNavigate();
@@ -310,6 +311,8 @@ const StudentPortal = ({ user }) => {
           </div>
         } />
       </Routes>
+
+      <AIChatbot user={user} context={{ dashboard: "student" }} />
     </div>
   );
 };

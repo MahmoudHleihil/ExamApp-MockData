@@ -6,7 +6,8 @@ import ExamList from './teacher/ExamList';
 import ExamPreview from './teacher/ExamPreview';
 import SubmissionList from './teacher/SubmissionList';
 import SubmissionDetail from './teacher/SubmissionDetail';
-import TeacherChatbot from './teacher/TeacherChatbot';
+import AIChatbot from './AIChatbot';
+import FloatingFileUpload from "./documents/FloatingFileUpload";
 import { mockDb } from '../api/mockDb';
 
 const TeacherDashboard = ({ user }) => {
@@ -38,6 +39,14 @@ const TeacherDashboard = ({ user }) => {
     ]
   };
   const [formData, setFormData] = useState(initialExamState);
+
+  const [chatPrompt, setChatPrompt] = useState("");
+
+  const handleGenerateFromMaterial = (document) => {
+    setChatPrompt(
+      `Generate a medium-difficulty exam with 10 multiple-choice questions using only the uploaded PDF "${document.title}". Save it as a draft.`
+    );
+  };
 
   // טעינת המבחנים
   const fetchExams = async () => {
@@ -328,14 +337,14 @@ const TeacherDashboard = ({ user }) => {
           )
         } />
       </Routes>
+      
+      <FloatingFileUpload onGenerateExam={handleGenerateFromMaterial} />
 
-      <TeacherChatbot context={{
-        examsCount: exams.length,
-        submissionsCount: submissions.length,
-        isEditing,
-        currentExamTitle: formData?.title,
-        selectedSubmissionStudent: selectedSubmission?.studentName
-      }} />
+      <AIChatbot
+        user={user}
+        context={{ dashboard: "teacher" }}
+        initialPrompt={chatPrompt}
+      />
     </div>
   );
 };
