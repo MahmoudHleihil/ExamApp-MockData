@@ -4,7 +4,7 @@ import AuditService from "../services/AuditService.js";
 import ConfirmationService from "../services/ConfirmationService.js";
 import MCPAuditService from "../services/MCPAuditService.js";
 
-import confirmationManager from "./confirmationManager.js";
+import ConfirmationManager from "./ConfirmationManager.js";
 
 function isRealConfirmationId(value) {
   return (
@@ -91,11 +91,11 @@ class MCPServer {
             : null;
 
         const actionArgs =
-          confirmationManager.cleanArgs(args);
+          ConfirmationManager.cleanArgs(args);
 
         if (!confirmationId) {
           const confirmation =
-            await confirmationManager.create({
+            await ConfirmationManager.create({
               user,
               toolName,
               args: actionArgs,
@@ -119,7 +119,7 @@ class MCPServer {
           return result;
         }
 
-        await confirmationManager.verifyAndConsume({
+        await ConfirmationManager.verifyAndConsume({
           id: confirmationId,
           userId: user.id,
           toolName,

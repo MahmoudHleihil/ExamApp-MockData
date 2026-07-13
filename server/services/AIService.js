@@ -6,7 +6,7 @@ import { getOpenAIToolsForUser } from "../ai/toolExecutor.js";
 import MCPServer from "../mcp/server.js";
 
 import ConversationService from "./ConversationService.js";
-import confirmationManager from "../mcp/confirmationManager.js";
+import ConfirmationManager from "../mcp/ConfirmationManager.js";
 
 class AIService {
   async chat(message, context) {
@@ -205,7 +205,7 @@ class AIService {
     
     if (this.isConfirmationMessage(message)) {
       const pending =
-        await confirmationManager.findLatestPending(
+        await ConfirmationManager.findLatestPending(
           context.user.id
         );
 
