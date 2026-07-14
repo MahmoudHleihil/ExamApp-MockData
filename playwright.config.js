@@ -70,6 +70,7 @@ export default defineConfig({
       testMatch: /teacher\/.*\.spec\.js/,
       dependencies: [
         "teacher-auth-setup",
+        "student-auth-setup",
       ],
       use: {
         ...devices["Desktop Chrome"],

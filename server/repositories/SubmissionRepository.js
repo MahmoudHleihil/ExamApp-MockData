@@ -1,6 +1,52 @@
 import pool from "../config/database.js";
 import { randomUUID } from "crypto";
 
+function mapSubmission(row) {
+  return {
+    id: row.id,
+
+    examId:
+      row.exam_id,
+
+    studentId:
+      row.student_id,
+
+    studentName:
+      row.student_name,
+
+    examTitle:
+      row.exam_title,
+
+    score:
+      row.score === null
+        ? null
+        : Number(row.score),
+
+    feedback:
+      row.feedback || "",
+
+    questionFeedback:
+      row.question_feedback ||
+      {},
+
+    isFeedbackVisible:
+      Boolean(
+        row.is_feedback_visible
+      ),
+
+    isScorePublished:
+      Boolean(
+        row.is_score_published
+      ),
+
+    createdBy:
+      row.created_by,
+
+    teacherId:
+      row.teacher_id,
+  };
+}
+
 class SubmissionRepository {
   mapAnswer(row) {
     if (!row) return null;
@@ -122,38 +168,152 @@ class SubmissionRepository {
   }
 
   async findById(id) {
-    const result = await pool.query(
-      `
-        SELECT
-          s.*,
-          e.title AS exam_title,
-          student.full_name AS student_name,
-          student.email AS student_email,
-          grader.full_name AS grader_name
-        FROM exam_submissions s
-        JOIN exams e
-          ON e.id = s.exam_id
-        JOIN users student
-          ON student.id = s.student_id
-        LEFT JOIN users grader
-          ON grader.id = s.graded_by
-        WHERE s.id = $1
-        LIMIT 1
-      `,
-      [id]
-    );
+    const submissionResult =
+      await pool.query(
+        `
+          SELECT
+            es.id,
+            es.exam_id,
+            es.student_id,
+            es.status,
+            es.score,
+            es.max_score,
+            es.percentage,
+            es.started_at,
+            es.submitted_at,
+            es.graded_at,
+            es.feedback,
+            es.is_feedback_visible,
+            es.is_score_published,
+            es.graded_by,
+            es.created_at,
+            es.updated_at,
 
-    const row = result.rows[0];
+            e.title AS exam_title,
+            e.created_by AS teacher_id,
 
-    if (!row) return null;
+            u.full_name AS student_name,
+            u.email AS student_email
 
-    const answers =
-      await this.getAnswers(id);
+          FROM exam_submissions es
 
-    return this.mapSubmission(
-      row,
-      answers
-    );
+          JOIN exams e
+            ON e.id = es.exam_id
+
+          JOIN users u
+            ON u.id = es.student_id
+
+          WHERE es.id = $1
+
+          LIMIT 1
+        `,
+        [id]
+      );
+
+    const row =
+      submissionResult.rows[0];
+
+    if (!row) {
+      return null;
+    }
+
+    const answersResult =
+      await pool.query(
+        `
+          SELECT
+            sa.id,
+            sa.submission_id,
+            sa.question_id,
+            sa.answer,
+            sa.is_correct,
+            sa.awarded_points,
+            sa.feedback,
+            sa.created_at,
+            sa.updated_at
+
+          FROM submission_answers sa
+
+          WHERE sa.submission_id = $1
+
+          ORDER BY sa.id ASC
+        `,
+        [id]
+      );
+
+    const answers = {};
+
+    const questionFeedback = {};
+
+    for (const answerRow of answersResult.rows) {
+      answers[answerRow.question_id] =
+        answerRow.answer;
+
+      questionFeedback[
+        answerRow.question_id
+      ] =
+        answerRow.feedback || "";
+    }
+
+    return {
+      id: row.id,
+
+      examId: row.exam_id,
+      examTitle: row.exam_title,
+
+      studentId: row.student_id,
+      studentName: row.student_name,
+      studentEmail: row.student_email,
+
+      teacherId: row.teacher_id,
+      createdBy: row.teacher_id,
+
+      status: row.status,
+
+      score:
+        row.score === null
+          ? null
+          : Number(row.score),
+
+      maxScore:
+        row.max_score === null
+          ? null
+          : Number(row.max_score),
+
+      percentage:
+        row.percentage === null
+          ? null
+          : Number(row.percentage),
+
+      startedAt: row.started_at,
+      submittedAt: row.submitted_at,
+      gradedAt: row.graded_at,
+
+      date:
+        row.submitted_at ||
+        row.created_at,
+
+      feedback:
+        row.feedback || "",
+
+      isFeedbackVisible:
+        Boolean(
+          row.is_feedback_visible
+        ),
+
+      isScorePublished:
+        Boolean(
+          row.is_score_published
+        ),
+
+      gradedBy:
+        row.graded_by,
+
+      answers,
+      questionFeedback,
+
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
   }
 
   async findAll() {
@@ -304,13 +464,14 @@ class SubmissionRepository {
   }
 
   async create(data) {
-    const client = await pool.connect();
+    const client =
+      await pool.connect();
+
+    const submissionId =
+      data.id || randomUUID();
 
     try {
       await client.query("BEGIN");
-
-      const submissionId =
-        data.id || randomUUID();
 
       const submissionResult =
         await client.query(
@@ -325,17 +486,25 @@ class SubmissionRepository {
               percentage,
               started_at,
               submitted_at,
-              graded_at,
               feedback,
               is_feedback_visible,
               is_score_published,
               graded_by
             )
             VALUES (
-              $1, $2, $3, $4,
-              $5, $6, $7, $8,
-              $9, $10, $11, $12,
-              $13, $14
+              $1,
+              $2,
+              $3,
+              $4,
+              $5,
+              $6,
+              $7,
+              $8,
+              $9,
+              $10,
+              $11,
+              $12,
+              $13
             )
             RETURNING id
           `,
@@ -343,69 +512,87 @@ class SubmissionRepository {
             submissionId,
             data.examId,
             data.studentId,
-            data.status || "submitted",
+            data.status ||
+              "submitted",
 
             data.score ?? null,
-            data.maxScore ?? null,
-            data.percentage ?? null,
 
-            data.startedAt || null,
+            data.maxScore ??
+              data.totalPoints ??
+              null,
+
+            data.percentage ??
+              data.score ??
+              null,
+
+            data.startedAt ||
+              null,
+
             data.submittedAt ||
-              new Date().toISOString(),
-
-            data.gradedAt || null,
+              data.date ||
+              new Date(),
 
             data.feedback || "",
-            data.isFeedbackVisible || false,
-            data.isScorePublished || false,
 
-            data.gradedBy || null,
+            Boolean(
+              data.isFeedbackVisible
+            ),
+
+            Boolean(
+              data.isScorePublished
+            ),
+
+            data.gradedBy ||
+              null,
           ]
         );
 
       const answers =
-        this.normalizeAnswers(
-          data.answers
-        );
+        data.answers &&
+        typeof data.answers ===
+          "object"
+          ? data.answers
+          : {};
 
-      for (const answer of answers) {
+      for (
+        const [
+          questionId,
+          answer,
+        ] of Object.entries(answers)
+      ) {
         await client.query(
           `
             INSERT INTO submission_answers (
               submission_id,
               question_id,
               answer,
-              is_correct,
-              awarded_points,
               feedback
             )
             VALUES (
               $1,
               $2,
               $3::JSONB,
-              $4,
-              $5,
-              $6
+              $4
             )
           `,
           [
             submissionId,
-            answer.questionId,
-            JSON.stringify(
-              answer.answer
-            ),
-            answer.isCorrect ?? null,
-            answer.awardedPoints ?? null,
-            answer.feedback || "",
+            questionId,
+            JSON.stringify(answer),
+
+            data.questionFeedback?.[
+              questionId
+            ] || "",
           ]
         );
       }
 
       await client.query("COMMIT");
 
-      return this.findById(
-        submissionResult.rows[0].id
-      );
+      return this
+        .findById(
+          submissionResult.rows[0].id
+        );
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -546,8 +733,112 @@ class SubmissionRepository {
     }
   }
 
+  async updateFeedback(
+    submissionId,
+    updates
+  ) {
+    const client =
+      await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const result =
+        await client.query(
+          `
+            UPDATE exam_submissions
+            SET
+              feedback = $1,
+              is_feedback_visible = $2,
+              is_score_published = $2,
+              score = $3,
+              percentage = $3,
+              graded_by = $4,
+              status = 'graded',
+              graded_at = NOW()
+            WHERE id = $5
+            RETURNING id
+          `,
+          [
+            updates.feedback || "",
+
+            Boolean(
+              updates.isFeedbackVisible
+            ),
+
+            updates.score ===
+            undefined
+              ? null
+              : Number(
+                  updates.score
+                ),
+
+            updates.gradedBy ||
+              null,
+
+            submissionId,
+          ]
+        );
+
+      if (!result.rows[0]) {
+        const error =
+          new Error(
+            "Submission not found"
+          );
+
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const questionFeedback =
+        updates.questionFeedback &&
+        typeof updates
+          .questionFeedback ===
+          "object"
+          ? updates
+              .questionFeedback
+          : {};
+
+      for (
+        const [
+          questionId,
+          feedback,
+        ] of Object.entries(
+          questionFeedback
+        )
+      ) {
+        await client.query(
+          `
+            UPDATE submission_answers
+            SET feedback = $1
+            WHERE
+              submission_id = $2
+              AND question_id = $3
+          `,
+          [
+            feedback || "",
+            submissionId,
+            questionId,
+          ]
+        );
+      }
+
+      await client.query("COMMIT");
+
+      return this
+        .findById(
+          submissionId
+        );
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async publishScore(id) {
-    return this.update(id, {
+    return SubmissionRepository.update(id, {
       isScorePublished: true,
       status: "graded",
       gradedAt:
@@ -556,7 +847,7 @@ class SubmissionRepository {
   }
 
   async publishFeedback(id) {
-    return this.update(id, {
+    return SubmissionRepository.update(id, {
       isFeedbackVisible: true,
     });
   }

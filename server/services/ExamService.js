@@ -181,59 +181,56 @@ class ExamService {
     scoreData,
     user
     ) {
-    if (!user?.id) {
-        const error = new Error(
-        "Authentication required"
-        );
+        if (!user?.id) {
+            const error = new Error(
+            "Authentication required"
+            );
 
-        error.statusCode = 401;
-        throw error;
-    }
+            error.statusCode = 401;
+            throw error;
+        }
 
-    if (user.role !== "Student") {
-        const error = new Error(
-        "Only students can submit exams"
-        );
+        if (user.role !== "Student") {
+            const error = new Error(
+            "Only students can submit exams"
+            );
 
-        error.statusCode = 403;
-        throw error;
-    }
+            error.statusCode = 403;
+            throw error;
+        }
 
-    const exam =
-        await ExamRepository.findById(
-        scoreData.examId
-        );
+        const exam =
+            await ExamRepository.findById(
+            scoreData.examId
+            );
 
-    if (!exam) {
-        const error =
-        new Error("Exam not found");
+        if (!exam) {
+            const error =
+            new Error("Exam not found");
 
-        error.statusCode = 404;
-        throw error;
-    }
+            error.statusCode = 404;
+            throw error;
+        }
 
-    if (
-        !exam.published &&
-        !exam.isPublished
-    ) {
-        const error = new Error(
-        "This exam is not published"
-        );
+        if (
+            !exam.published &&
+            !exam.isPublished
+        ) {
+            const error = new Error(
+            "This exam is not published"
+            );
 
-        error.statusCode = 403;
-        throw error;
-    }
+            error.statusCode = 403;
+            throw error;
+        }
+        const createdSubmission =
+        await SubmissionRepository.create({
+            ...scoreData,
+            studentId: user.id,
+            status: "submitted",
+        });
 
-    return SubmissionRepository.create({
-        ...scoreData,
-
-        studentId: user.id,
-
-        studentName:
-        user.fullName ||
-        user.name ||
-        scoreData.studentName,
-    });
+        return createdSubmission;
     }
 
     async getMyScores(user) {
@@ -514,27 +511,95 @@ class ExamService {
         );
     }
 
-    async updateSubmissionFeedback(id, data, user) {
-        const index = mockDb.studentScores.findIndex((s) => s.id === id);
+    async updateSubmissionFeedback(
+    submissionId,
+    updates,
+    user
+    ) {
+    if (!user?.id) {
+        const error =
+        new Error(
+            "Authentication required"
+        );
 
-        if (index === -1) {
-            const error = new Error("Submission not found");
-            error.statusCode = 404;
-            throw error;
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const submission =
+        await SubmissionRepository.findById(
+        submissionId
+        );
+
+    if (!submission) {
+        const error =
+        new Error(
+            "Submission not found"
+        );
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const exam =
+        await ExamRepository.findById(
+        submission.examId
+        );
+
+    if (!exam) {
+        const error =
+        new Error("Exam not found");
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const isAdmin =
+        user.role === "Admin";
+
+    const isOwner =
+        String(exam.teacherId) ===
+        String(user.id) ||
+        String(exam.createdBy) ===
+        String(user.id);
+
+    if (!isAdmin && !isOwner) {
+        const error =
+        new Error(
+            "You cannot grade submissions for another teacher's exam."
+        );
+
+        error.statusCode = 403;
+        throw error;
+    }
+
+    return SubmissionRepository.updateFeedback(
+        submissionId,
+        {
+        feedback:
+            updates.feedback ?? "",
+
+        questionFeedback:
+            updates.questionFeedback ??
+            {},
+
+        isFeedbackVisible:
+            Boolean(
+            updates.isFeedbackVisible
+            ),
+
+        score:
+            updates.score !==
+            undefined
+            ? Number(
+                updates.score
+                )
+            : submission.score,
+
+        gradedBy:
+            user.id,
         }
-
-        mockDb.studentScores[index] = {
-            ...mockDb.studentScores[index],
-            feedback: data.feedback,
-            questionFeedback: data.questionFeedback,
-            isFeedbackVisible: data.isFeedbackVisible,
-            score:
-            data.score !== undefined
-                ? data.score
-                : mockDb.studentScores[index].score,
-        };
-
-        return mockDb.studentScores[index];
+    );
     }
     
     async getUserExams(user) {

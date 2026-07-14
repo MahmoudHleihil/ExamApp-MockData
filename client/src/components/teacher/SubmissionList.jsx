@@ -238,7 +238,8 @@ const SubmissionList = ({ submissions, loading, onBack, onViewDetails }) => {
           }}>Reset All Filters</button>
         </div>
       ) : (
-        <div className="table-responsive shadow-sm rounded-3">
+        <div className="table-responsive shadow-sm rounded-3"
+        data-testid="teacher-submission-list">
           <table className="table table-hover align-middle mb-0 bg-white">
             <thead className="table-light">
               <tr>
@@ -253,24 +254,30 @@ const SubmissionList = ({ submissions, loading, onBack, onViewDetails }) => {
               {processedSubmissions.map((submission, index) => {
                 const isPinned = pinnedIds.includes(submission.id);
                 return (
-                  <tr key={submission.id || index} className={isPinned ? 'table-primary-subtle' : ''}>
+                  <tr key={submission.id || index} className={isPinned ? 'table-primary-subtle' : ''}
+                  data-testid="submission-card"
+                  data-submission-id={submission.id}
+                  data-exam-id={submission.examId}>
                     <td className="ps-4">
                       <div className="d-flex align-items-center">
                         <div className="avatar-sm bg-primary-subtle text-primary rounded-circle me-3 d-flex align-items-center justify-content-center fw-bold" style={{width: '32px', height: '32px'}}>
                           {submission.studentName.charAt(0)}
                         </div>
-                        <span className="fw-semibold">
+                        <span className="fw-semibold"
+                        data-testid="submission-student-name">
                           {submission.studentName}
                           {isPinned && <i className="bi bi-pin-fill ms-2 text-primary small"></i>}
                         </span>
                       </div>
                     </td>
-                    <td>{submission.examTitle}</td>
+                    <td data-testid="submission-exam-title">{submission.examTitle}</td>
                     <td className="text-muted small">
                       {new Date(submission.date).toLocaleDateString()} {new Date(submission.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </td>
                     <td>
-                      <span className={`badge rounded-pill px-3 py-2 ${submission.score >= 60 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}`}>
+                      <span 
+                      data-testid="submission-score"
+                      className={`badge rounded-pill px-3 py-2 ${submission.score >= 60 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}`}>
                         {submission.score.toFixed(0)}%
                       </span>
                     </td>
@@ -283,7 +290,7 @@ const SubmissionList = ({ submissions, loading, onBack, onViewDetails }) => {
                         >
                           <i className={`bi bi-pin${isPinned ? '-fill' : ''}`}></i>
                         </button>
-                        <button className="btn btn-sm btn-outline-primary" onClick={() => onViewDetails(submission)}>
+                        <button className="btn btn-sm btn-outline-primary" data-testid="submission-view-button" onClick={() => onViewDetails(submission)}>
                           View Details
                         </button>
                       </div>

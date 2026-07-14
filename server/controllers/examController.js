@@ -90,20 +90,23 @@ export const deleteExam = async (req, res, next) => {
     }
 };
 
-export const submitScore = async (req, res, next) => {
+export const submitScore =
+  async (req, res, next) => {
     try {
-
-        const result = await ExamService.submitScore(
-            req.body,
-            req.user
+      const submission =
+        await ExamService.submitScore(
+          req.body,
+          req.user
         );
 
-        res.json(result);
-
-    } catch (err) {
-        next(err);
+      res.status(201).json({
+        success: true,
+        submission,
+      });
+    } catch (error) {
+      next(error);
     }
-};
+  };
 
 export const getAllSubmissions = async (req, res, next) => {
     try {
