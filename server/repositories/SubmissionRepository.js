@@ -189,7 +189,7 @@ class SubmissionRepository {
     );
   }
 
-  async findByStudent(studentId) {
+  async findByStudentId(studentId) {
     const result = await pool.query(
       `
         SELECT

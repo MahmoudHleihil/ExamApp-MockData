@@ -24,12 +24,13 @@ export default defineConfig({
   },
 
   fullyParallel: false,
+  workers: 1,
 
   forbidOnly: Boolean(process.env.CI),
 
   retries: process.env.CI ? 2 : 0,
 
-  workers: process.env.CI ? 1 : undefined,
+  // workers: process.env.CI ? 1 : undefined,
 
   reporter: [
     ["list"],
@@ -50,51 +51,53 @@ export default defineConfig({
   projects: [
     {
       name: "teacher-auth-setup",
-
-      testMatch:
-        /teacher\.setup\.js/,
-
+      testMatch: /auth\/teacher\.setup\.js/,
       use: {
-        ...devices[
-          "Desktop Chrome"
-        ],
+        ...devices["Desktop Chrome"],
+      },
+    },
+
+    {
+      name: "student-auth-setup",
+      testMatch: /auth\/student\.setup\.js/,
+      use: {
+        ...devices["Desktop Chrome"],
       },
     },
 
     {
       name: "teacher-chromium",
-
-      testIgnore: [
-        /teacher\.setup\.js/,
-        /teacher-login\.spec\.js/,
-      ],
-
+      testMatch: /teacher\/.*\.spec\.js/,
       dependencies: [
         "teacher-auth-setup",
       ],
-
       use: {
-        ...devices[
-          "Desktop Chrome"
-        ],
-
+        ...devices["Desktop Chrome"],
         storageState:
           "playwright/.auth/teacher.json",
       },
     },
 
     {
-      name:
-        "unauthenticated-chromium",
-
-      testMatch:
-        /teacher-login\.spec\.js/,
-
+      name: "student-chromium",
+      testMatch: /student\/.*\.spec\.js/,
+      dependencies: [
+        "student-auth-setup",
+        "teacher-auth-setup",
+      ],
       use: {
-        ...devices[
-          "Desktop Chrome"
-        ],
+        ...devices["Desktop Chrome"],
+        storageState:
+          "playwright/.auth/student.json",
+      },
+    },
 
+    {
+      name: "unauthenticated-chromium",
+      testMatch:
+        /auth\/teacher-login\.spec\.js/,
+      use: {
+        ...devices["Desktop Chrome"],
         storageState: {
           cookies: [],
           origins: [],

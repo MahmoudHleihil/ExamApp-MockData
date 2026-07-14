@@ -10,14 +10,35 @@ class ExamService {
         return await ExamRepository.findAll();
     }
 
-    async getExam(id) {
+    async getExam(id, user) {
+    const exam =
+        await ExamRepository.findById(id);
 
-        const exam = await ExamRepository.findById(id);
+    if (!exam) {
+        const error =
+        new Error(
+            "Exam not found"
+        );
 
-        if (!exam)
-            throw new Error("Exam not found");
+        error.statusCode = 404;
+        throw error;
+    }
 
-        return exam;
+    if (
+        user.role === "Student" &&
+        !exam.published &&
+        !exam.isPublished
+    ) {
+        const error =
+        new Error(
+            "Exam is not published."
+        );
+
+        error.statusCode = 403;
+        throw error;
+    }
+
+    return exam;
     }
 
     async createExam(examData, user) {
@@ -157,8 +178,7 @@ class ExamService {
     }
 
     async submitScore(
-    examId,
-    answers,
+    scoreData,
     user
     ) {
     if (!user?.id) {
@@ -181,19 +201,21 @@ class ExamService {
 
     const exam =
         await ExamRepository.findById(
-        examId
+        scoreData.examId
         );
 
     if (!exam) {
-        const error = new Error(
-        "Exam not found"
-        );
+        const error =
+        new Error("Exam not found");
 
         error.statusCode = 404;
         throw error;
     }
 
-    if (!exam.published) {
+    if (
+        !exam.published &&
+        !exam.isPublished
+    ) {
         const error = new Error(
         "This exam is not published"
         );
@@ -202,119 +224,16 @@ class ExamService {
         throw error;
     }
 
-    const existing =
-        await SubmissionRepository
-        .findByStudentAndExam(
-            user.id,
-            examId
-        );
+    return SubmissionRepository.create({
+        ...scoreData,
 
-    if (existing) {
-        const error = new Error(
-        "You already submitted this exam"
-        );
-
-        error.statusCode = 409;
-        throw error;
-    }
-
-    let earnedPoints = 0;
-    let maxScore = 0;
-
-    const gradedAnswers =
-        exam.questions.map((question) => {
-        const submittedAnswer =
-            answers?.[question.id];
-
-        const points =
-            Number(question.points || 0);
-
-        maxScore += points;
-
-        const automaticallyGraded =
-            question.type !== "written";
-
-        const isCorrect =
-            automaticallyGraded
-            ? this.isAnswerCorrect(
-                submittedAnswer,
-                question.correctAnswer
-                )
-            : null;
-
-        const awardedPoints =
-            isCorrect === true
-            ? points
-            : automaticallyGraded
-                ? 0
-                : null;
-
-        if (
-            typeof awardedPoints ===
-            "number"
-        ) {
-            earnedPoints += awardedPoints;
-        }
-
-        return {
-            questionId: question.id,
-            answer:
-            submittedAnswer ?? null,
-            isCorrect,
-            awardedPoints,
-            feedback: "",
-        };
-        });
-
-    const hasWrittenQuestions =
-        exam.questions.some(
-        (question) =>
-            question.type === "written"
-        );
-
-    const percentage =
-        maxScore > 0
-        ? Number(
-            (
-                (earnedPoints / maxScore) *
-                100
-            ).toFixed(2)
-            )
-        : 0;
-
-    const submission =
-        await SubmissionRepository.create({
-        examId,
         studentId: user.id,
 
-        answers: gradedAnswers,
-
-        score: earnedPoints,
-        maxScore,
-        percentage,
-
-        status: hasWrittenQuestions
-            ? "grading"
-            : "graded",
-
-        submittedAt:
-            new Date().toISOString(),
-
-        gradedAt: hasWrittenQuestions
-            ? null
-            : new Date().toISOString(),
-
-        isScorePublished:
-            !hasWrittenQuestions &&
-            exam.releaseScoresImmediately,
-
-        isFeedbackVisible: false,
-        });
-
-        return this.sanitizeSubmissionForUser(
-        submission,
-        user
-        );
+        studentName:
+        user.fullName ||
+        user.name ||
+        scoreData.studentName,
+    });
     }
 
     async getMyScores(user) {
@@ -544,11 +463,20 @@ class ExamService {
     }
 
     async getStudentSubmissions(user) {
-        return mockDb.studentScores.filter(
-            (s) =>
-            s.studentId === user.id ||
-            s.studentName === user.fullName
-        );
+        if (!user?.id) {
+            const error =
+            new Error(
+                "Authentication required"
+            );
+
+            error.statusCode = 401;
+            throw error;
+        }
+
+        return SubmissionRepository
+            .findByStudentId(
+            user.id
+            );
     }
 
     async getMySubmissions(user) {

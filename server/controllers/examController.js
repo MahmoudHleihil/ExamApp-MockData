@@ -11,17 +11,20 @@ export const getAllExams = async (req, res, next) => {
     }
 };
 
-export const getExamById = async (req, res, next) => {
+export const getExamById =
+  async (req, res, next) => {
     try {
+      const exam =
+        await ExamService.getExam(
+          req.params.id,
+          req.user
+        );
 
-        const exam = await ExamService.getExam(req.params.id);
-
-        res.status(200).json(exam);
-
-    } catch (err) {
-        next(err);
+      res.json(exam);
+    } catch (error) {
+      next(error);
     }
-};
+  };
 
 export const createExam = async (req, res, next) => {
     try {
@@ -128,18 +131,20 @@ export const getAllSubmissions = async (req, res, next) => {
         }
     };
 
-export const getStudentSubmissions = async (req, res, next) => {
+export const getStudentSubmissions =
+  async (req, res, next) => {
     try {
+      const submissions =
+        await ExamService
+          .getStudentSubmissions(
+            req.user
+          );
 
-        const submissions =
-            await ExamService.getStudentSubmissions(req.user);
-
-        res.json(submissions);
-
-    } catch (err) {
-        next(err);
+      res.json(submissions);
+    } catch (error) {
+      next(error);
     }
-};
+  };
 
 export const updateSubmissionFeedback = async (
     req,

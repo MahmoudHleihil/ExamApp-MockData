@@ -32,8 +32,31 @@ const ExamTaker = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const question = exam.questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / exam.questions.length) * 100;
+  const questions =
+    Array.isArray(exam?.questions)
+      ? exam.questions
+      : [];
+
+  const question =
+    questions[currentQuestionIndex];
+
+  if (!question) {
+    return (
+      <div
+        className="alert alert-danger"
+        data-testid="student-exam-error"
+      >
+        This exam has no available questions.
+      </div>
+    );
+  }
+  const progress =
+    questions.length > 0
+      ? (
+          (currentQuestionIndex + 1) /
+          questions.length
+        ) * 100
+      : 0;
 
   // טעינת התשובות
   const renderQuestionInput = (question) => {
@@ -45,8 +68,10 @@ const ExamTaker = ({
             {question.options.map((option, index) => (
               <button
                 key={index}
+                type="button"
                 className={`list-group-item list-group-item-action ${selectedAnswers[question.id] === option ? 'active' : ''}`}
                 onClick={() => handleAnswerChange(question.id, option, question.type)}
+                data-testid={`student-answer-${currentQuestionIndex}-${index}`}
               >
                 {option}
               </button>
@@ -63,6 +88,7 @@ const ExamTaker = ({
                   key={index}
                   className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${isSelected ? 'list-group-item-primary' : ''}`}
                   onClick={() => handleAnswerChange(question.id, option, question.type)}
+                  data-testid={`student-answer-${currentQuestionIndex}-${index}`}
                 >
                   {option}
                   {isSelected && <span className="badge bg-primary rounded-pill">Selected</span>}
@@ -81,6 +107,7 @@ const ExamTaker = ({
               placeholder="Type your answer here..."
               value={selectedAnswers[question.id] || ''}
               onChange={(e) => handleAnswerChange(question.id, e.target.value, question.type)}
+              data-testid={`student-written-answer-${currentQuestionIndex}`}
             />
           </div>
         );
@@ -90,7 +117,8 @@ const ExamTaker = ({
   };
 
   return (
-    <div className="container mt-4">
+    <div className="container mt-4"
+    data-testid="student-exam-page">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div className="progress flex-grow-1 me-4" style={{height: '10px'}}>
           <div className="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style={{width: `${progress}%`}}></div>
@@ -103,11 +131,13 @@ const ExamTaker = ({
 
       <div className="card shadow border-0">
         <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-          <h4 className="mb-0 text-primary fw-bold">{exam.title}</h4>
-          <span className="badge bg-secondary py-2 px-3">Question {currentQuestionIndex + 1} of {exam.questions.length}</span>
+          <h4 className="mb-0 text-primary fw-bold" 
+          data-testid="student-exam-heading">{exam.title}</h4>
+          <span className="badge bg-secondary py-2 px-3">Question {currentQuestionIndex + 1} of {questions.length}</span>
         </div>
         <div className="card-body p-4">
-          <h5 className="card-title mb-4 lh-base">{question.text}</h5>
+          <h5 className="card-title mb-4 lh-base"
+          data-testid="student-question-text">{question.text}</h5>
           {renderQuestionInput(question)}
         </div>
         <div className="card-footer bg-white border-0 p-4 d-flex justify-content-between">
@@ -115,14 +145,16 @@ const ExamTaker = ({
             className="btn btn-outline-secondary px-4" 
             onClick={() => setCurrentQuestionIndex(prev => prev - 1)}
             disabled={currentQuestionIndex === 0}
+            data-testid="student-previous-question"
           >
             Previous
           </button>
           
-          {currentQuestionIndex === exam.questions.length - 1 ? (
+          {currentQuestionIndex === questions.length - 1 ? (
             <button 
               className="btn btn-success px-5 fw-bold" 
               onClick={() => setShowConfirmModal(true)}
+              data-testid="student-submit-exam"
             >
               Submit Exam
             </button>
@@ -130,6 +162,7 @@ const ExamTaker = ({
             <button 
               className="btn btn-primary px-5" 
               onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
+              data-testid="student-next-question"
             >
               Next
             </button>
@@ -139,7 +172,8 @@ const ExamTaker = ({
 
       {/* Custom Confirmation Modal */}
       {showConfirmModal && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}
+        data-testid="student-submit-modal">
           <div className="card shadow-lg border-0 animate__animated animate__zoomIn" style={{ maxWidth: '400px', width: '90%' }}>
             <div className="card-body p-4 text-center">
               <div className="display-4 text-warning mb-3">
@@ -150,10 +184,12 @@ const ExamTaker = ({
                 You are about to finish the exam. Once submitted, you cannot change your answers.
               </p>
               <div className="d-grid gap-2">
-                <button className="btn btn-success btn-lg fw-bold" onClick={handleSubmitExam}>
+                <button className="btn btn-success btn-lg fw-bold" onClick={handleSubmitExam}
+                data-testid="student-confirm-submit">
                   Yes, Submit Now
                 </button>
-                <button className="btn btn-light" onClick={() => setShowConfirmModal(false)}>
+                <button className="btn btn-light" onClick={() => setShowConfirmModal(false)}
+                  data-testid="student-cancel-submit">
                   Cancel and Review
                 </button>
               </div>

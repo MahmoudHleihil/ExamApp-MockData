@@ -222,7 +222,7 @@ const StudentPortal = ({ user }) => {
   };
 
   return (
-    <div className="container mt-4">
+    <div className="container mt-4" data-testid="student-dashboard">
       {/* Nested Routes for Student Features */}
       <Routes>
         {/* Default redirect to exams list */}

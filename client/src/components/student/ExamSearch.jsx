@@ -34,6 +34,8 @@ const ExamSearch = ({
   const isBeforeStart = exam && !exam.isAlwaysAvailable ? now < new Date(exam.scheduledDate) : false;
   const countdown = exam && !exam.isAlwaysAvailable ? getCountdown(exam.scheduledDate) : null;
 
+  const questionCount = Array.isArray(exam?.questions) ? exam.questions.length : 0;
+
   return (
     <div className="animate__animated animate__fadeIn">
       <div className="text-center mb-5">
@@ -50,12 +52,14 @@ const ExamSearch = ({
               placeholder="Enter Exam ID (e.g., 1)"
               value={examId}
               onChange={(e) => setExamId(e.target.value)}
+              data-testid="student-exam-id"
             />
             <button 
               className="btn btn-primary px-4" 
               type="button" 
               onClick={handleStartExam}
               disabled={loading}
+              data-testid="student-search-exam"
             >
               {loading ? (
                 <span className="spinner-border spinner-border-sm" role="status"></span>
@@ -63,12 +67,14 @@ const ExamSearch = ({
             </button>
           </div>
           
-          {error && <div className="alert alert-danger mt-3">{error}</div>}
+          {error && <div className="alert alert-danger mt-3" data-testid="student-exam-error">{error}</div>}
 
           {exam && !isExamStarted && (
-            <div className="mt-4 p-4 border-start border-4 border-success bg-light rounded shadow-sm animate__animated animate__fadeIn">
+            <div className="mt-4 p-4 border-start border-4 border-success bg-light rounded shadow-sm animate__animated animate__fadeIn"
+            data-testid="student-exam-preview">
               <div className="d-flex justify-content-between align-items-start mb-2">
-                <h4 className="fw-bold text-success mb-0">{exam.title}</h4>
+                <h4 className="fw-bold text-success mb-0"
+                data-testid="student-exam-title">{exam.title}</h4>
                 {exam.isAlwaysAvailable ? (
                   <span className="badge bg-success text-white px-3 py-2 rounded-pill shadow-sm">
                     <i className="bi bi-unlock-fill me-2"></i>
@@ -82,7 +88,7 @@ const ExamSearch = ({
                 )}
               </div>
               <div className="d-flex flex-wrap gap-3 mb-4 text-muted">
-                <span><i className="bi bi-question-circle me-1"></i> {exam.questions.length} Questions</span>
+                <span><i className="bi bi-question-circle me-1"></i> {questionCount} Questions</span>
                 <span><i className="bi bi-clock me-1"></i> {exam.timeLimit} Minutes</span>
                 {!exam.isAlwaysAvailable && (
                   <span><i className="bi bi-calendar-event me-1"></i> {new Date(exam.scheduledDate).toLocaleString()}</span>
@@ -103,9 +109,11 @@ const ExamSearch = ({
                       setEnteredPassword(e.target.value);
                       setPasswordError('');
                     }}
+                    data-testid="student-exam-password"
                   />
                   {/* שגיאה בסיסמה */}
-                  {passwordError && <div className="invalid-feedback">{passwordError}</div>}
+                  {passwordError && <div className="invalid-feedback"
+                  data-testid="student-password-error">{passwordError}</div>}
                 </div>
               )}
 
@@ -114,6 +122,7 @@ const ExamSearch = ({
                 className={`btn btn-lg w-100 fw-bold shadow-sm ${isBeforeStart ? 'btn-secondary' : 'btn-success'}`} 
                 onClick={startTakingExam}
                 disabled={isBeforeStart}
+                data-testid="student-start-exam"
               >
                 {isBeforeStart ? (
                   <>
