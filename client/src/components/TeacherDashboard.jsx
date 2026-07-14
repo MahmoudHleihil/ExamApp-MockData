@@ -241,9 +241,17 @@ const TeacherDashboard = ({ user }) => {
     try {
       await examService.deleteExam(id);
       setDeletingId(null);
-      fetchExams();
+      await fetchExams();
     } catch (error) {
-      alert("Failed to delete exam");
+      console.error(
+        "Failed to delete exam:",
+        error
+      );
+
+      alert(
+        error?.message ||
+        "Failed to delete exam"
+      );
     }
   };
 

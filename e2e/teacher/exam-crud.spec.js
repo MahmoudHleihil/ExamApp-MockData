@@ -728,5 +728,162 @@ test.describe(
         }
       }
     );
+
+    test(
+      "teacher deletes an existing exam",
+      async ({ page }) => {
+        const suffix = Date.now();
+
+        const examTitle =
+          `Playwright Delete Exam ${suffix}`;
+
+        let createdExamId = null;
+        let deletedThroughUi = false;
+
+        try {
+          await page.goto("/");
+
+          await expect(
+            page.getByTestId(
+              "teacher-dashboard"
+            )
+          ).toBeVisible();
+
+          const created =
+            await createExamThroughUI(
+              page,
+              examTitle
+            );
+
+          createdExamId =
+            created.examId;
+
+          expect(
+            createdExamId,
+            "Created exam ID was not found."
+          ).toBeTruthy();
+
+          const examRow =
+            getExamRow(
+              page,
+              examTitle
+            );
+
+          await expect(
+            examRow
+          ).toBeVisible();
+
+          await examRow
+            .getByTestId(
+              "exam-delete-button"
+            )
+            .click();
+
+          await expect(
+            examRow.getByTestId(
+              "exam-confirm-delete"
+            )
+          ).toBeVisible();
+
+          await expect(
+            examRow.getByTestId(
+              "exam-cancel-delete"
+            )
+          ).toBeVisible();
+
+          const deleteResponsePromise =
+            page.waitForResponse(
+              (response) => {
+                const url =
+                  new URL(
+                    response.url()
+                  );
+
+                return (
+                  response
+                    .request()
+                    .method() === "DELETE" &&
+                  url.pathname ===
+                    `/api/exams/${createdExamId}`
+                );
+              },
+              {
+                timeout: 15_000,
+              }
+            );
+
+          await examRow
+            .getByTestId(
+              "exam-confirm-delete"
+            )
+            .click();
+
+          const deleteResponse =
+            await deleteResponsePromise;
+
+          const responseText =
+            await deleteResponse
+              .text()
+              .catch(() => "");
+
+          expect(
+            deleteResponse.ok(),
+            `Exam deletion failed with ${deleteResponse.status()}: ${responseText}`
+          ).toBeTruthy();
+
+          deletedThroughUi = true;
+
+          await expect(
+            getExamRow(
+              page,
+              examTitle
+            )
+          ).toHaveCount(0, {
+            timeout: 15_000,
+          });
+
+          /*
+          * Reload to prove the exam was deleted from
+          * PostgreSQL and not only removed from React state.
+          */
+          await page.reload();
+
+          await expect(
+            page.getByTestId(
+              "teacher-dashboard"
+            )
+          ).toBeVisible();
+
+          await expect(
+            page.getByTestId(
+              "exam-list"
+            )
+          ).toBeVisible({
+            timeout: 15_000,
+          });
+
+          await expect(
+            getExamRow(
+              page,
+              examTitle
+            )
+          ).toHaveCount(0);
+        } finally {
+          /*
+          * Only use API cleanup when the UI deletion failed
+          * before completing.
+          */
+          if (
+            createdExamId &&
+            !deletedThroughUi
+          ) {
+            await deleteExamById(
+              page,
+              createdExamId
+            );
+          }
+        }
+      }
+    );
   }
 );
