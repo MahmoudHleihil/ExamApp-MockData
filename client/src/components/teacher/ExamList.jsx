@@ -1,7 +1,7 @@
 import React from 'react';
 
 // רכיב של רשימת המבחנים.
-const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, deletingId, setDeletingId }) => {
+const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, onPublish, deletingId, setDeletingId, publishingId, }) => {
   // אם השאלות עדיין לא נטענו אז זה מוצג.
   if (loading) {
     return (
@@ -42,6 +42,18 @@ const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, deletingId, set
                     <td className="ps-4">
                       <span className="fw-bold text-dark" 
                       data-testid="exam-card-title">{exam.title}</span>
+                      <span
+                        className={`badge ms-2 ${
+                          exam.published || exam.isPublished
+                            ? "bg-primary"
+                            : "bg-secondary"
+                        }`}
+                        data-testid="exam-publish-status"
+                      >
+                        {exam.published || exam.isPublished
+                          ? "Published"
+                          : "Draft"}
+                      </span>
                       {exam.isAlwaysAvailable ? (
                         <span className="badge bg-success text-white ms-2 small"
                         data-testid="exam-status">Always Open</span>
@@ -86,6 +98,29 @@ const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, deletingId, set
                             data-testid="exam-preview-button"
                           >
                             Preview
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline-success"
+                            onClick={() => onPublish(exam.id)}
+                            disabled={
+                              publishingId === exam.id ||
+                              exam.published ||
+                              exam.isPublished ||
+                              isExpired
+                            }
+                            data-testid="exam-publish-button"
+                            title={
+                              exam.published || exam.isPublished
+                                ? "Already published"
+                                : "Publish"
+                            }
+                          >
+                            {publishingId === exam.id
+                              ? "Publishing..."
+                              : exam.published || exam.isPublished
+                                ? "Published"
+                                : "Publish"}
                           </button>
                           <button 
                             className="btn btn-outline-primary" 

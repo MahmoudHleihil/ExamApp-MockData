@@ -885,5 +885,177 @@ test.describe(
         }
       }
     );
+
+    test(
+      "teacher publishes a draft exam",
+      async ({ page }) => {
+        const suffix = Date.now();
+
+        const examTitle =
+          `Playwright Publish Exam ${suffix}`;
+
+        let createdExamId = null;
+
+        try {
+          await page.goto("/");
+
+          await expect(
+            page.getByTestId(
+              "teacher-dashboard"
+            )
+          ).toBeVisible();
+
+          const created =
+            await createExamThroughUI(
+              page,
+              examTitle
+            );
+
+          createdExamId =
+            created.examId;
+
+          expect(
+            createdExamId
+          ).toBeTruthy();
+
+          const examRow =
+            getExamRow(
+              page,
+              examTitle
+            );
+
+          await expect(
+            examRow.getByTestId(
+              "exam-publish-status"
+            )
+          ).toHaveText(/draft/i);
+
+          page.once(
+            "dialog",
+            async (dialog) => {
+              expect(
+                dialog.type()
+              ).toBe("confirm");
+
+              expect(
+                dialog.message()
+              ).toMatch(
+                /publish this exam/i
+              );
+
+              await dialog.accept();
+            }
+          );
+
+          const publishResponsePromise =
+            page.waitForResponse(
+              (response) => {
+                if (
+                  response.request().method() !==
+                  "PUT"
+                ) {
+                  return false;
+                }
+
+                const url =
+                  new URL(response.url());
+
+                if (
+                  url.pathname !==
+                  `/api/exams/${createdExamId}`
+                ) {
+                  return false;
+                }
+
+                const body =
+                  response.request()
+                    .postDataJSON();
+
+                return body?.published === true;
+              },
+              {
+                timeout: 15_000,
+              }
+            );
+
+          await examRow
+            .getByTestId(
+              "exam-publish-button"
+            )
+            .click();
+
+          const publishResponse =
+            await publishResponsePromise;
+
+          const responseText =
+            await publishResponse
+              .text()
+              .catch(() => "");
+
+          expect(
+            publishResponse.ok(),
+            `Publishing failed with ${publishResponse.status()}: ${responseText}`
+          ).toBeTruthy();
+
+          await expect(
+            getExamRow(
+              page,
+              examTitle
+            ).getByTestId(
+              "exam-publish-status"
+            )
+          ).toHaveText(
+            /published/i,
+            {
+              timeout: 15_000,
+            }
+          );
+
+          await page.reload();
+
+          await expect(
+            page.getByTestId(
+              "teacher-dashboard"
+            )
+          ).toBeVisible();
+
+          await expect(
+            getExamRow(
+              page,
+              examTitle
+            )
+          ).toBeVisible({
+            timeout: 15_000,
+          });
+
+          await expect(
+            getExamRow(
+              page,
+              examTitle
+            ).getByTestId(
+              "exam-publish-status"
+            )
+          ).toHaveText(
+            /published/i
+          );
+
+          await expect(
+            getExamRow(
+              page,
+              examTitle
+            ).getByTestId(
+              "exam-publish-button"
+            )
+          ).toBeDisabled();
+        } finally {
+          if (createdExamId) {
+            await deleteExamById(
+              page,
+              createdExamId
+            );
+          }
+        }
+      }
+    );
   }
 );

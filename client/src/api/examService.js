@@ -192,6 +192,44 @@ export const examService = {
     return { success: true };
   },
 
+  publishExam: async (id) => {
+    if (!API_CONFIG.useMock) {
+      const response = await fetch(
+        `${API_CONFIG.baseUrl}/exams/${encodeURIComponent(id)}`,
+        getFetchConfig("PUT", {
+          published: true,
+        })
+      );
+
+      const body = await response
+        .json()
+        .catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          body?.message ||
+          body?.error ||
+          "Failed to publish exam"
+        );
+      }
+
+      return body;
+    }
+
+    const exam = mockDb.exams.find(
+      (item) => item.id === id
+    );
+
+    if (!exam) {
+      throw new Error("Exam not found");
+    }
+
+    exam.published = true;
+    exam.isPublished = true;
+
+    return exam;
+  },
+
   submitScore: async (scoreData) => {
     if (!API_CONFIG.useMock) {
       const response = await fetch(`${API_CONFIG.baseUrl}/exams/submit`, getFetchConfig('POST', scoreData));

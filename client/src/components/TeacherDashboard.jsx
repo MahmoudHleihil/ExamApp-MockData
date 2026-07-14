@@ -23,6 +23,7 @@ const TeacherDashboard = ({ user }) => {
   const [editExamId, setEditExamId] = useState(null);
   const [previewExam, setPreviewExam] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [publishingId, setPublishingId] =useState(null);
 
   // אובייקט הבחינה ההתחלתית.
   const initialExamState = {
@@ -46,6 +47,35 @@ const TeacherDashboard = ({ user }) => {
     setChatPrompt(
       `Generate a medium-difficulty exam with 10 multiple-choice questions using only the uploaded PDF "${document.title}". Save it as a draft.`
     );
+  };
+
+  const handlePublishExam = async (id) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to publish this exam?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setPublishingId(id);
+
+      await examService.publishExam(id);
+      await fetchExams();
+    } catch (error) {
+      console.error(
+        "Failed to publish exam:",
+        error
+      );
+
+      alert(
+        error?.message ||
+        "Failed to publish exam"
+      );
+    } finally {
+      setPublishingId(null);
+    }
   };
 
   // טעינת המבחנים
@@ -372,8 +402,10 @@ const TeacherDashboard = ({ user }) => {
               onEdit={handleEditClick} 
               onDelete={handleDeleteExam} 
               onPreview={handlePreviewClick} 
+              onPublish={handlePublishExam}
               deletingId={deletingId} 
-              setDeletingId={setDeletingId} 
+              setDeletingId={setDeletingId}
+              publishingId={publishingId} 
             />
           </div>
         } />
