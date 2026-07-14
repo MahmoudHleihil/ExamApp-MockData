@@ -10,22 +10,42 @@ const QUESTION_TYPES = [
 
 // רכיב טופס עריכת מבחנים קיימים או הוספת מבחנים חדשים.
 const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
+  const questions =
+    Array.isArray(
+      formData?.questions
+    )
+      ? formData.questions
+      : [];
+
   // פןנקציית הוספת שאלה חדשה לטופס.
   const handleAddQuestion = () => {
-    // מוסיף שאלה חדשה ריקה לסוף רשימת השאלות ומעדכן את טופס אחר כך.
-    setFormData(prev => ({
-      ...prev,
+    setFormData((previous) => ({
+      ...previous,
+
       questions: [
-        ...prev.questions,
-        { 
-          id: `q${Date.now()}`, 
-          type: 'multiple-choice', 
-          text: '', 
-          options: ['', '', '', ''], 
-          correctAnswer: '',
-          points: 10
-        }
-      ]
+        ...(
+          Array.isArray(
+            previous.questions
+          )
+            ? previous.questions
+            : []
+        ),
+
+        {
+          id: `q${Date.now()}`,
+          type:
+            "multiple-choice",
+          text: "",
+          options: [
+            "",
+            "",
+            "",
+            "",
+          ],
+          correctAnswer: "",
+          points: 10,
+        },
+      ],
     }));
   };
 
@@ -226,11 +246,11 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
           <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-4">
             <h6 className="fw-bold mb-0 text-primary">
               <i className="bi bi-list-task me-2"></i>
-              Questions ({formData.questions.length})
+              Questions ({questions.length})
             </h6>
           </div>
           
-          {formData.questions.map((q, qIndex) => (
+          {questions.map((q, qIndex) => (
             <div key={qIndex} className="card mb-4 border-0 bg-light shadow-sm" data-testid="question-card">
               <div className="card-header d-flex justify-content-between align-items-center bg-white border-0 py-3">
                 <span className="fw-bold text-secondary">Question {qIndex + 1}</span>
@@ -238,7 +258,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                   type="button" 
                   className="btn btn-outline-danger btn-sm rounded-pill"
                   onClick={() => handleRemoveQuestion(qIndex)}
-                  disabled={formData.questions.length === 1}
+                  disabled={questions.length === 1}
                 >
                   <i className="bi bi-trash me-1"></i> Remove
                 </button>

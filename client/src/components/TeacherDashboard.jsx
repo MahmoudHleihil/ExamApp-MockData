@@ -130,7 +130,7 @@ const TeacherDashboard = ({ user }) => {
         await examService.createExam(formData);
       }
       resetToHome();
-      fetchExams();
+      await fetchExams();
       navigate('/teacher/exams');
     } catch (error) {
       alert(`Failed to ${isEditing ? 'update' : 'create'} exam`);
@@ -140,13 +140,99 @@ const TeacherDashboard = ({ user }) => {
   // פונקציה אסינכרונית לטפל בלחיצה על כפתור עריכה של המבחן.
   const handleEditClick = async (id) => {
     try {
-      const exam = await examService.getExamById(id);
-      setFormData(exam);
+      console.log(
+        "[Edit Exam] Loading:",
+        id
+      );
+
+      const exam =
+        await examService.getExamById(id);
+
+      console.log(
+        "[Edit Exam] API result:",
+        exam
+      );
+
+      const normalizedQuestions =
+        Array.isArray(exam.questions) &&
+        exam.questions.length > 0
+          ? exam.questions.map(
+              (question, index) => ({
+                id:
+                  question.id ||
+                  `q${index + 1}`,
+
+                type:
+                  question.type ||
+                  "multiple-choice",
+
+                text:
+                  question.text ||
+                  question.question ||
+                  question.questionText ||
+                  "",
+
+                options:
+                  Array.isArray(
+                    question.options
+                  )
+                    ? question.options
+                    : [],
+
+                correctAnswer:
+                  question.correctAnswer ??
+                  question.correct_answer ??
+                  "",
+
+                points:
+                  Number(
+                    question.points
+                  ) || 0,
+
+                sourceEvidence:
+                  question.sourceEvidence ||
+                  question.source_evidence ||
+                  null,
+              })
+            )
+          : initialExamState.questions;
+
+      const normalizedExam = {
+        ...initialExamState,
+        ...exam,
+        questions:
+          normalizedQuestions,
+      };
+
+      console.log(
+        "[Edit Exam] Normalized:",
+        normalizedExam
+      );
+
+      setFormData(normalizedExam);
       setEditExamId(id);
       setIsEditing(true);
-      navigate(`/teacher/exams/edit/${id}`);
+
+      navigate(
+        `/teacher/exams/edit/${encodeURIComponent(
+          id
+        )}`
+      );
     } catch (error) {
-      alert("Failed to load exam for editing");
+      console.error(
+        "[Edit Exam] Failed:",
+        error
+      );
+
+      console.error(
+        "[Edit Exam] Stack:",
+        error?.stack
+      );
+
+      alert(
+        error?.message ||
+        "Failed to load exam for editing"
+      );
     }
   };
 

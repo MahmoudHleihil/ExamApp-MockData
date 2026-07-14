@@ -66,14 +66,66 @@ export const examService = {
 
   getExamById: async (id) => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/exams/${encodeURIComponent(id)}`, getFetchConfig());
-      
-      return await parseApiResponse(response.json(), "Exam not found");
+      const response = await fetch(
+        `${API_CONFIG.baseUrl}/exams/${encodeURIComponent(id)}`,
+        getFetchConfig()
+      );
+
+      const rawBody = await response.text();
+
+      let data;
+
+      try {
+        data = rawBody
+          ? JSON.parse(rawBody)
+          : null;
+      } catch {
+        data = rawBody;
+      }
+
+      if (!response.ok) {
+        const message =
+          data?.message ||
+          data?.error ||
+          (typeof data === "string"
+            ? data
+            : null) ||
+          `Exam could not be loaded (${response.status})`;
+
+        const error = new Error(message);
+        error.status = response.status;
+        error.data = data;
+
+        throw error;
+      }
+
+      if (
+        !data ||
+        typeof data !== "object" ||
+        Array.isArray(data)
+      ) {
+        throw new Error(
+          "The server returned an invalid exam response."
+        );
+      }
+
+      return data;
     }
+
     await delay(500);
-    const exam = mockDb.exams.find(e => e.id === id);
-    if (!exam) throw new Error('Exam not found');
-    return JSON.parse(JSON.stringify(exam)); // Deep copy to prevent accidental mutations
+
+    const exam =
+      mockDb.exams.find(
+        (item) => item.id === id
+      );
+
+    if (!exam) {
+      throw new Error("Exam not found");
+    }
+
+    return JSON.parse(
+      JSON.stringify(exam)
+    );
   },
 
   createExam: async (exam) => {
