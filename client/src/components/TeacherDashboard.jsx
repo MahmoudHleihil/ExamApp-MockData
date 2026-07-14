@@ -193,7 +193,7 @@ const TeacherDashboard = ({ user }) => {
             </div>
             <h4 className="fw-bold">Create New Exam</h4>
             <p className="text-muted">Design a new assessment with multiple question types.</p>
-            <button className="btn btn-primary btn-lg w-100 mt-3 fw-bold" onClick={() => { resetToHome(); navigate('/teacher/exams/new'); }}>
+            <button className="btn btn-primary btn-lg w-100 mt-3 fw-bold" data-testid="create-exam-button"  onClick={() => { resetToHome(); navigate('/teacher/exams/new'); }}>
               Launch Creator
             </button>
           </div>
@@ -255,7 +255,7 @@ const TeacherDashboard = ({ user }) => {
   );
 
   return (
-    <div className="container mt-2">
+    <div className="container mt-2" data-testid="teacher-dashboard">
       <div className="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
         <h2 className="fw-bold mb-0">Teacher Dashboard</h2>
       </div>

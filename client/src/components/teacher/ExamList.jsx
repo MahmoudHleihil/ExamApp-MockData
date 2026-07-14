@@ -16,7 +16,7 @@ const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, deletingId, set
 
   // רשימת המבחנים.
   return (
-    <div className="card shadow-sm border-0 animate__animated animate__fadeIn">
+    <div className="card shadow-sm border-0 animate__animated animate__fadeIn" data-testid="exam-list">
       <div className="card-body p-0">
         <div className="table-responsive">
           <table className="table table-hover align-middle mb-0">
@@ -36,20 +36,27 @@ const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, deletingId, set
                 const isExpired = !exam.isAlwaysAvailable && now > expiryDate;
 
                 return (
-                  <tr key={exam.id}>
+                  <tr key={exam.id}
+                  data-testid="exam-card"
+                  data-exam-id={exam.id}>
                     <td className="ps-4">
-                      <span className="fw-bold text-dark">{exam.title}</span>
+                      <span className="fw-bold text-dark" 
+                      data-testid="exam-card-title">{exam.title}</span>
                       {exam.isAlwaysAvailable ? (
-                        <span className="badge bg-success text-white ms-2 small">Always Open</span>
+                        <span className="badge bg-success text-white ms-2 small"
+                        data-testid="exam-status">Always Open</span>
                       ) : isExpired && (
-                        <span className="badge bg-warning text-dark ms-2 small">Expired</span>
+                        <span className="badge bg-warning text-dark ms-2 small" 
+                        data-testid="exam-status">Expired</span>
                       )}
                     </td>
                     <td>
-                      <span className="badge bg-secondary rounded-pill">{exam.questions.length} Questions</span>
+                      <span className="badge bg-secondary rounded-pill"
+                      data-testid="exam-question-count">{exam.questions.length} Questions</span>
                     </td>
                     <td>
-                      <code className="bg-light p-1 rounded text-muted small">{exam.id}</code>
+                      <code className="bg-light p-1 rounded text-muted small"
+                      data-testid="exam-id">{exam.id}</code>
                     </td>
                     <td className="text-end pe-4">
                       {/* אם אנחנו במהלך מחיקת המבחן הזה אז שני Confirm Delete ו Cancel מוצגות, אחרת Preview, Edit ו Delete מוצג*/}
@@ -58,12 +65,14 @@ const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, deletingId, set
                           <button 
                             className="btn btn-danger fw-bold px-3" 
                             onClick={() => onDelete(exam.id)}
+                            data-testid="exam-confirm-delete"
                           >
                             Confirm Delete
                           </button>
                           <button 
                             className="btn btn-secondary px-3" 
                             onClick={() => setDeletingId(null)}
+                            data-testid="exam-cancel-delete"
                           >
                             Cancel
                           </button>
@@ -74,6 +83,7 @@ const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, deletingId, set
                             className="btn btn-outline-info" 
                             onClick={() => onPreview(exam.id)}
                             title="Preview"
+                            data-testid="exam-preview-button"
                           >
                             Preview
                           </button>
@@ -82,6 +92,7 @@ const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, deletingId, set
                             onClick={() => onEdit(exam.id)}
                             disabled={isExpired}
                             title={isExpired ? "Cannot edit expired exam" : "Edit"}
+                            data-testid="exam-edit-button"
                           >
                             Edit
                           </button>
@@ -89,6 +100,7 @@ const ExamList = ({ exams, loading, onEdit, onDelete, onPreview, deletingId, set
                             className="btn btn-outline-danger" 
                             onClick={() => setDeletingId(exam.id)}
                             title="Delete"
+                            data-testid="exam-delete-button"
                           >
                             Delete
                           </button>

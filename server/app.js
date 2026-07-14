@@ -1,46 +1,3 @@
-// import express from "express";
-// import cors from "cors";
-// import helmet from "helmet";
-// import cookieParser from "cookie-parser";
-// import dotenv from "dotenv";
-
-// import examRoutes from "./routes/examRoutes.js";
-// import userRoutes from "./routes/userRoutes.js";
-// import notificationRoutes from "./routes/notificationRoutes.js";
-
-// import errorHandler from "./middleware/errorHandler.js";
-
-// import chatRoutes from "./routes/chatRoutes.js";
-
-// dotenv.config();
-
-// const app = express();
-
-// app.use(helmet());
-
-// app.use(cors({
-//     origin: process.env.CLIENT_URL,
-//     credentials: true
-// }));
-
-// app.use(express.json());
-// app.use(cookieParser());
-
-// app.use("/api/users", userRoutes);
-// app.use("/api/exams", examRoutes);
-// app.use("/api/notifications", notificationRoutes);
-// app.use("/api/chat", chatRoutes);
-
-// app.get("/api/health", (req, res) => {
-//     res.json({
-//         success: true
-//     });
-// });
-
-// app.use(errorHandler);
-
-// export default app;
-
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -79,10 +36,32 @@ app.use(helmet({
   },
 }));
 
-app.use(cors({
-  origin: 'http://localhost:5173', // Your React app's URL
-  credentials: true, // Allow cookies to be sent
-}));
+const allowedOrigins = new Set(
+  [
+    process.env.FRONTEND_URL,
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+  ].filter(Boolean)
+);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) {
+        return callback(null, true);
+      }
+
+      const error = new Error(
+        `CORS blocked origin: ${origin}`
+      );
+
+      error.statusCode = 403;
+      callback(error);
+    },
+
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 

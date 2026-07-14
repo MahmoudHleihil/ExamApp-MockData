@@ -4,6 +4,55 @@ import { API_CONFIG, getFetchConfig } from './config';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+async function parseApiResponse(
+  response,
+  fallbackMessage
+) {
+  const contentType =
+    response.headers.get(
+      "content-type"
+    ) || "";
+
+  let data = null;
+
+  if (
+    contentType.includes(
+      "application/json"
+    )
+  ) {
+    data = await response
+      .json()
+      .catch(() => null);
+  } else {
+    data = await response
+      .text()
+      .catch(() => "");
+  }
+
+  if (!response.ok) {
+    const message =
+      data?.message ||
+      data?.error ||
+      (
+        typeof data === "string" &&
+        data
+      ) ||
+      fallbackMessage;
+
+    const error =
+      new Error(message);
+
+    error.status =
+      response.status;
+
+    error.data = data;
+
+    throw error;
+  }
+
+  return data;
+}
+
 export const examService = {
   getAllExams: async () => {
     if (!API_CONFIG.useMock) {
@@ -17,9 +66,9 @@ export const examService = {
 
   getExamById: async (id) => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/exams/${id}`, getFetchConfig());
-      if (!response.ok) throw new Error('Exam not found');
-      return await response.json();
+      const response = await fetch(`${API_CONFIG.baseUrl}/exams/${encodeURIComponent(id)}`, getFetchConfig());
+      
+      return await parseApiResponse(response.json(), "Exam not found");
     }
     await delay(500);
     const exam = mockDb.exams.find(e => e.id === id);
@@ -29,9 +78,19 @@ export const examService = {
 
   createExam: async (exam) => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/exams`, getFetchConfig('POST', exam));
-      if (!response.ok) throw new Error('Failed to create exam');
-      return await response.json();
+        const response =
+          await fetch(
+            `${API_CONFIG.baseUrl}/exams`,
+            getFetchConfig(
+              "POST",
+              exam
+            )
+          );
+
+        return await parseApiResponse(
+          response,
+          "Failed to create exam"
+        );
     }
     logger.debug('Creating new exam', { title: exam.title, teacherId: exam.teacherId });
     await delay(800);
@@ -48,8 +107,8 @@ export const examService = {
   updateExam: async (id, updatedExam) => {
     if (!API_CONFIG.useMock) {
       const response = await fetch(`${API_CONFIG.baseUrl}/exams/${id}`, getFetchConfig('PUT', updatedExam));
-      if (!response.ok) throw new Error('Failed to update exam');
-      return await response.json();
+      
+      return await parseApiResponse(response, "Failed to update exam");
     }
     logger.debug('Updating exam', { examId: id });
     await delay(800);
@@ -66,8 +125,8 @@ export const examService = {
   deleteExam: async (id) => {
     if (!API_CONFIG.useMock) {
       const response = await fetch(`${API_CONFIG.baseUrl}/exams/${id}`, getFetchConfig('DELETE'));
-      if (!response.ok) throw new Error('Failed to delete exam');
-      return await response.json();
+      
+      return await parseApiResponse(response, "Failed to delete exam");
     }
     logger.debug('Deleting exam', { examId: id });
     await delay(500);
@@ -132,9 +191,9 @@ export const examService = {
   // פונקציה אסינכרונית שמחזירה את ההגשות של הסטודנט
   getSubmissionsByStudent: async (studentName) => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/exams/submissions/student/${studentName}`, getFetchConfig());
-      if (!response.ok) throw new Error('Failed to fetch student submissions');
-      return await response.json();
+      const response = await fetch(`${API_CONFIG.baseUrl}/exams/submissions/student/${encodeURIComponent(studentName)}`, getFetchConfig());
+      return await parseApiResponse( response.json(),
+      "Failed to fetch student submissions");
     }
     await delay(500);
     return mockDb.studentScores.filter(s => s.studentName === studentName);

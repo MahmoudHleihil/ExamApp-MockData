@@ -61,12 +61,12 @@ const Login = ({ onLoginSuccess, onSwitchToForgot }) => {
           <p className="text-muted mb-4">Enter your credentials to continue</p>
           
           {error && (
-            <div className={`alert ${error.includes('pending') ? 'alert-warning' : 'alert-danger'} py-2 animate__animated animate__shakeX`}>
+            <div className={`alert ${error.includes('pending') ? 'alert-warning' : 'alert-danger'} py-2 animate__animated animate__shakeX`} role="alert" data-testid="login-error">
               <i className="bi bi-exclamation-triangle-fill me-2"></i> {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} data-testid="login-form" >
             <div className="mb-3">
               <label className="form-label small fw-bold text-uppercase">Email Address</label>
               <div className="input-group">
@@ -77,7 +77,7 @@ const Login = ({ onLoginSuccess, onSwitchToForgot }) => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="name@example.com"
+                  placeholder="name@example.com" aria-label="Email" data-testid="login-email"
                 />
               </div>
             </div>
@@ -100,7 +100,7 @@ const Login = ({ onLoginSuccess, onSwitchToForgot }) => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="••••••••"
+                  placeholder="••••••••"  aria-label="Password" data-testid="login-password"
                 />
               </div>
             </div>
@@ -119,7 +119,7 @@ const Login = ({ onLoginSuccess, onSwitchToForgot }) => {
             <button
               type="submit"
               className="btn btn-primary w-100 py-3 fw-bold mb-4 shadow-sm"
-              disabled={loading}
+              disabled={loading} data-testid="login-submit"
             >
               {loading ? (
                 <>
