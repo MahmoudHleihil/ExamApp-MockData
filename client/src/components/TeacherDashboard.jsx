@@ -467,10 +467,24 @@ const TeacherDashboard = ({ user }) => {
               <p className="mt-2 text-muted">Loading details...</p>
             </div>
           ) : (
-            <SubmissionDetail 
-              submission={selectedSubmission} 
-              exam={detailExam} 
-              onBack={() => navigate('/teacher/submissions')} 
+            <SubmissionDetail
+              submission={selectedSubmission}
+              exam={detailExam}
+              onBack={() => navigate('/teacher/submissions')}
+              onSubmissionUpdated={(updated) => {
+                setSelectedSubmission(updated);
+
+                setSubmissions((current) =>
+                  current.map((item) =>
+                    item.id === updated.id
+                      ? {
+                          ...item,
+                          ...updated,
+                        }
+                      : item
+                  )
+                );
+              }}
             />
           )
         } />

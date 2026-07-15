@@ -146,6 +146,13 @@ router.get(
   ExamController.getStudentSubmissionReview
 );
 
+router.put(
+  "/submissions/:submissionId/answers/:questionId/ai-review",
+  authenticate,
+  authorize("Teacher", "Admin"),
+  ExamController.reviewAiGradingSuggestion
+);
+
 router.get(
   "/:id",
   authenticate,

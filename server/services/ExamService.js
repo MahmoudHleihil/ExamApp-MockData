@@ -196,177 +196,390 @@ class ExamService {
         examId,
         answers = {},
     },
-    user
+    user,
+    dependencies = {}
     ) {
-        const exam =
-            await ExamRepository.findById(
-            examId
-            );
+    const aiGradingService =
+        dependencies.aiGradingService ||
+        this.aiGradingService ||
+        null;
 
-        if (!exam) {
-            const error =
-            new Error("Exam not found");
+    const exam =
+        await ExamRepository.findById(
+        examId
+        );
 
-            error.statusCode = 404;
-            throw error;
-        }
+    if (!exam) {
+        const error =
+        new Error("Exam not found");
 
-        if (!exam.published) {
-            const error =
-            new Error(
-                "Exam is not published"
-            );
+        error.statusCode = 404;
+        throw error;
+    }
 
-            error.statusCode = 403;
-            throw error;
-        }
+    if (!exam.published) {
+        const error =
+        new Error(
+            "Exam is not published"
+        );
 
-        const existingSubmission =
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (!user?.id) {
+        const error =
+        new Error(
+            "Authentication required"
+        );
+
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const existingSubmission =
         await SubmissionRepository
-            .findByStudentAndExam(
+        .findByStudentAndExam(
             user.id,
             examId
-            );
+        );
 
-        if (existingSubmission) {
+    if (existingSubmission) {
         const error = new Error(
-            "You have already submitted this exam."
+        "You have already submitted this exam."
         );
 
         error.statusCode = 409;
         throw error;
+    }
+
+    let earnedPoints = 0;
+    let maxScore = 0;
+    let hasWrittenQuestions = false;
+
+    const gradedAnswers =
+        exam.questions.map(
+        (question) => {
+            const points =
+            Number(
+                question.points
+            ) || 0;
+
+            maxScore += points;
+
+            const studentAnswer =
+            answers[question.id];
+
+            /*
+            * Written questions are not assigned a
+            * final grade during submission.
+            *
+            * AI suggestions are stored separately,
+            * and the teacher remains responsible
+            * for the final awarded points.
+            */
+            if (
+            question.type ===
+            "written"
+            ) {
+            hasWrittenQuestions = true;
+
+            return {
+                questionId:
+                question.id,
+
+                answer:
+                studentAnswer ?? null,
+
+                isCorrect: null,
+
+                awardedPoints: null,
+
+                feedback: "",
+            };
+            }
+
+            let isCorrect = false;
+
+            if (
+            question.type ===
+            "multiple-response"
+            ) {
+            const submitted =
+                Array.isArray(
+                studentAnswer
+                )
+                ? studentAnswer
+                : [];
+
+            const expected =
+                Array.isArray(
+                question.correctAnswer
+                )
+                ? question.correctAnswer
+                : [];
+
+            isCorrect =
+                submitted.length ===
+                expected.length &&
+                submitted.every(
+                (value) =>
+                    expected.includes(
+                    value
+                    )
+                );
+            } else {
+            isCorrect =
+                studentAnswer ===
+                question.correctAnswer;
+            }
+
+            const awardedPoints =
+            isCorrect
+                ? points
+                : 0;
+
+            earnedPoints +=
+            awardedPoints;
+
+            return {
+            questionId:
+                question.id,
+
+            answer:
+                studentAnswer ?? null,
+
+            isCorrect,
+
+            awardedPoints,
+
+            feedback: "",
+            };
+        }
+        );
+
+    /*
+    * Until written questions are manually graded,
+    * the percentage represents only the current
+    * awarded points against the complete exam.
+    *
+    * The score must remain unpublished while
+    * written questions are pending review.
+    */
+    const percentage =
+        maxScore > 0
+        ? Math.round(
+            (
+                earnedPoints /
+                maxScore
+            ) * 100
+            )
+        : 0;
+
+    let createdSubmission;
+
+    try {
+        createdSubmission =
+        await SubmissionRepository.create({
+            examId,
+
+            studentId:
+            user.id,
+
+            status:
+            "submitted",
+
+            score:
+            earnedPoints,
+
+            maxScore,
+
+            percentage,
+
+            submittedAt:
+            new Date(),
+
+            answers:
+            gradedAnswers,
+
+            isFeedbackVisible:
+            false,
+
+            /*
+            * Never release an incomplete score
+            * when written questions still require
+            * teacher review.
+            */
+            isScorePublished:
+            !hasWrittenQuestions &&
+            Boolean(
+                exam
+                .releaseScoresImmediately
+            ),
+        });
+    } catch (error) {
+        if (
+        error?.code ===
+            "23505" ||
+        error?.constraint ===
+            "one_submission_per_student_exam"
+        ) {
+        const conflict =
+            new Error(
+            "You have already submitted this exam."
+            );
+
+        conflict.statusCode =
+            409;
+
+        throw conflict;
         }
 
-        let earnedPoints = 0;
-        let maxScore = 0;
+        throw error;
+    }
 
-        const gradedAnswers =
-            exam.questions.map(
-            (question) => {
-                const points =
-                Number(
+    /*
+    * The database submission already exists at
+    * this point. AI failure must therefore never
+    * fail or roll back the student's submission.
+    */
+    if (
+        hasWrittenQuestions &&
+        aiGradingService
+    ) {
+        const writtenQuestions =
+        exam.questions.filter(
+            (question) =>
+            question.type ===
+            "written"
+        );
+
+        for (
+        const question
+        of writtenQuestions
+        ) {
+        try {
+            const studentAnswer =
+            answers[
+                question.id
+            ];
+
+            const suggestion =
+            await aiGradingService
+                .gradeWrittenAnswer({
+                question:
+                    question.text ||
+                    question.question ||
+                    "",
+
+                referenceAnswer:
+                    question.correctAnswer ||
+                    "",
+
+                rubric:
+                    question
+                    .sourceEvidence ||
+                    question.rubric ||
+                    "",
+
+                studentAnswer:
+                    String(
+                    studentAnswer ??
+                    ""
+                    ),
+
+                maxPoints:
+                    Number(
                     question.points
-                ) || 0;
+                    ) || 0,
+                });
 
-                maxScore += points;
+            await SubmissionRepository
+            .updateAiGradingSuggestion(
+                createdSubmission.id,
+                question.id,
+                suggestion
+            );
+        } catch (
+            gradingError
+        ) {
+            console.error(
+            "Written-answer AI grading failed",
+            {
+                submissionId:
+                createdSubmission.id,
 
-                const studentAnswer =
-                answers[question.id];
-
-                const correctAnswer =
-                question.correctAnswer;
-
-                let isCorrect = false;
-
-                if (
-                question.type ===
-                "multiple-response"
-                ) {
-                const submitted =
-                    Array.isArray(
-                    studentAnswer
-                    )
-                    ? studentAnswer
-                    : [];
-
-                const expected =
-                    Array.isArray(
-                    correctAnswer
-                    )
-                    ? correctAnswer
-                    : [];
-
-                isCorrect =
-                    submitted.length ===
-                    expected.length &&
-                    submitted.every(
-                    (value) =>
-                        expected.includes(
-                        value
-                        )
-                    );
-                } else if (
-                question.type ===
-                "written"
-                ) {
-                isCorrect =
-                    typeof studentAnswer ===
-                    "string" &&
-                    typeof correctAnswer ===
-                    "string" &&
-                    studentAnswer
-                    .trim()
-                    .toLowerCase() ===
-                    correctAnswer
-                        .trim()
-                        .toLowerCase();
-                } else {
-                isCorrect =
-                    studentAnswer ===
-                    correctAnswer;
-                }
-
-                const awardedPoints =
-                isCorrect ? points : 0;
-
-                earnedPoints +=
-                awardedPoints;
-
-                return {
                 questionId:
-                    question.id,
-                answer:
-                    studentAnswer ?? null,
-                isCorrect,
-                awardedPoints,
-                };
+                question.id,
+
+                error:
+                gradingError
+                    ?.message ||
+                "Unknown AI grading error",
             }
             );
 
-        const percentage =
-            maxScore > 0
-            ? Math.round(
-                (
-                    earnedPoints /
-                    maxScore
-                ) *
-                    100
-                )
-            : 0;
+            /*
+            * Persist a visible failure state so the
+            * teacher knows manual review is required.
+            */
+            try {
+            await SubmissionRepository
+                .updateAiGradingSuggestion(
+                createdSubmission.id,
+                question.id,
+                {
+                    status:
+                    "ai-grading-failed",
 
-        try {
-            return SubmissionRepository.create({
-                examId,
-                studentId: user.id,
-                status:
-                "submitted",
-                score: earnedPoints,
-                maxScore,
-                percentage,
-                submittedAt:
-                new Date(),
-                answers:
-                gradedAnswers,
-                isFeedbackVisible:
-                false,
-                isScorePublished:
-                Boolean(
-                    exam
-                    .releaseScoresImmediately
-                ),
-            });
-        } catch (error) {
-            if (error?.code === "23505") {
-                const conflict =
-                new Error(
-                    "You have already submitted this exam."
+                    awardedPoints:
+                    null,
+
+                    confidence:
+                    null,
+
+                    feedback:
+                    "AI grading is currently unavailable. Manual teacher review is required.",
+
+                    strengths: [],
+
+                    missingConcepts:
+                    [],
+                }
                 );
+            } catch (
+            persistenceError
+            ) {
+            console.error(
+                "Failed to persist AI grading failure",
+                {
+                submissionId:
+                    createdSubmission.id,
 
-                conflict.statusCode = 409;
-                throw conflict;
+                questionId:
+                    question.id,
+
+                error:
+                    persistenceError
+                    ?.message ||
+                    "Unknown persistence error",
+                }
+            );
             }
         }
-        throw error;
+        }
+    }
+
+    /*
+    * Reload so the caller receives any stored AI
+    * suggestions together with the submission.
+    */
+    return (
+        await SubmissionRepository
+        .findById(
+            createdSubmission.id
+        )
+    ) || createdSubmission;
     }
 
     async createExam(examData, user) {
@@ -1597,6 +1810,210 @@ class ExamService {
             success: true,
             passwordRequired: true,
         };
+    }
+
+    async reviewAiGradingSuggestion(
+    submissionId,
+    questionId,
+    reviewData,
+    user
+    ) {
+    if (!user?.id) {
+        const error = new Error(
+        "Authentication required"
+        );
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const allowedActions = new Set([
+        "accept",
+        "override",
+        "reject",
+    ]);
+
+    const action =
+        String(
+        reviewData?.action || ""
+        ).trim();
+
+    if (!allowedActions.has(action)) {
+        const error = new Error(
+        "Invalid AI review action"
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const submission =
+        await SubmissionRepository.findById(
+        submissionId
+        );
+
+    if (!submission) {
+        const error = new Error(
+        "Submission not found"
+        );
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const exam =
+        await ExamRepository.findById(
+        submission.examId
+        );
+
+    if (!exam) {
+        const error = new Error(
+        "Exam not found"
+        );
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const isOwner =
+        String(exam.createdBy) ===
+        String(user.id);
+
+    if (
+        user.role !== "Admin" &&
+        !isOwner
+    ) {
+        const error = new Error(
+        "You are not allowed to review grading suggestions for another teacher's exam"
+        );
+        error.statusCode = 403;
+        throw error;
+    }
+
+    const answer =
+        submission.answerDetails?.find(
+        (item) =>
+            String(item.questionId) ===
+            String(questionId)
+        );
+
+    if (!answer) {
+        const error = new Error(
+        "Submission answer not found"
+        );
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const question =
+        exam.questions?.find(
+        (item) =>
+            String(item.id) ===
+            String(questionId)
+        );
+
+    if (!question) {
+        const error = new Error(
+        "Question not found"
+        );
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (question.type !== "written") {
+        const error = new Error(
+        "AI grading review is only available for written questions"
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const maxPoints =
+        Number(question.points) || 0;
+
+    let awardedPoints = null;
+    let feedback = "";
+    let aiGradingStatus;
+
+    if (action === "accept") {
+        if (
+        answer.aiAwardedPoints === null ||
+        answer.aiAwardedPoints === undefined
+        ) {
+        const error = new Error(
+            "No AI grading suggestion is available to accept"
+        );
+        error.statusCode = 400;
+        throw error;
+        }
+
+        awardedPoints =
+        Number(
+            answer.aiAwardedPoints
+        );
+
+        feedback =
+        answer.aiFeedback || "";
+
+        aiGradingStatus =
+        "accepted";
+    }
+
+    if (action === "override") {
+        const requestedPoints =
+        Number(
+            reviewData.awardedPoints
+        );
+
+        if (
+        !Number.isFinite(
+            requestedPoints
+        ) ||
+        requestedPoints < 0 ||
+        requestedPoints >
+            maxPoints
+        ) {
+        const error = new Error(
+            `Awarded points must be between 0 and the question maximum of ${maxPoints}`
+        );
+        error.statusCode = 400;
+        throw error;
+        }
+
+        awardedPoints =
+        requestedPoints;
+
+        feedback =
+        String(
+            reviewData.feedback || ""
+        );
+
+        aiGradingStatus =
+        "overridden";
+    }
+
+    if (action === "reject") {
+        awardedPoints = null;
+        feedback = "";
+        aiGradingStatus =
+        "rejected";
+    }
+
+    await SubmissionRepository
+        .reviewAiGradingSuggestion(
+        submissionId,
+        questionId,
+        {
+            awardedPoints,
+            feedback,
+            aiGradingStatus,
+        }
+        );
+
+    await SubmissionRepository
+        .recalculateSubmissionScore(
+        submissionId
+        );
+
+    return SubmissionRepository.findById(
+        submissionId
+    );
     }
 }
 

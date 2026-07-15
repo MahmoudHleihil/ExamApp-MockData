@@ -289,3 +289,24 @@ export const verifyExamPassword = async (
     next(error);
   }
 };
+
+export const reviewAiGradingSuggestion =
+  async (req, res, next) => {
+    try {
+      const submission =
+        await ExamService
+          .reviewAiGradingSuggestion(
+            req.params.submissionId,
+            req.params.questionId,
+            req.body,
+            req.user
+          );
+
+      res.json({
+        success: true,
+        submission,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };

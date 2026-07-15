@@ -47,6 +47,78 @@ function mapSubmission(row) {
   };
 }
 
+const mapSubmissionAnswerRow = (
+  row
+) => ({
+  id: row.id,
+
+  submissionId:
+    row.submission_id,
+
+  questionId:
+    row.question_id,
+
+  answer:
+    row.answer,
+
+  isCorrect:
+    row.is_correct,
+
+  awardedPoints:
+    row.awarded_points === null
+      ? null
+      : Number(
+          row.awarded_points
+        ),
+
+  feedback:
+    row.feedback || "",
+
+  aiAwardedPoints:
+    row.ai_awarded_points === null
+      ? null
+      : Number(
+          row.ai_awarded_points
+        ),
+
+  aiConfidence:
+    row.ai_confidence === null
+      ? null
+      : Number(
+          row.ai_confidence
+        ),
+
+  aiFeedback:
+    row.ai_feedback || "",
+
+  aiStrengths:
+    Array.isArray(
+      row.ai_strengths
+    )
+      ? row.ai_strengths
+      : [],
+
+  aiMissingConcepts:
+    Array.isArray(
+      row.ai_missing_concepts
+    )
+      ? row.ai_missing_concepts
+      : [],
+
+  aiGradingStatus:
+    row.ai_grading_status ||
+    null,
+
+  aiGradedAt:
+    row.ai_graded_at,
+
+  createdAt:
+    row.created_at,
+
+  updatedAt:
+    row.updated_at,
+});
+
 class SubmissionRepository {
   mapAnswer(row) {
     if (!row) return null;
@@ -137,6 +209,309 @@ class SubmissionRepository {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
+  }
+
+  mapSubmissionAnswer(row) {
+    return {
+      id: String(row.id),
+
+      submissionId:
+        row.submission_id,
+
+      questionId:
+        row.question_id,
+
+      type:
+        row.question_type,
+
+      text:
+        row.question_text,
+
+      points:
+        Number(
+          row.question_points ??
+            0
+        ),
+
+      answer:
+        row.answer,
+
+      isCorrect:
+        row.is_correct,
+
+      awardedPoints:
+        row.awarded_points === null
+          ? null
+          : Number(
+              row.awarded_points
+            ),
+
+      feedback:
+        row.feedback || "",
+
+      aiAwardedPoints:
+        row.ai_awarded_points === null
+          ? null
+          : Number(
+              row.ai_awarded_points
+            ),
+
+      aiConfidence:
+        row.ai_confidence === null
+          ? null
+          : Number(
+              row.ai_confidence
+            ),
+
+      aiFeedback:
+        row.ai_feedback || "",
+
+      aiStrengths:
+        Array.isArray(
+          row.ai_strengths
+        )
+          ? row.ai_strengths
+          : [],
+
+      aiMissingConcepts:
+        Array.isArray(
+          row.ai_missing_concepts
+        )
+          ? row.ai_missing_concepts
+          : [],
+
+      aiGradingStatus:
+        row.ai_grading_status ||
+        null,
+
+      aiGradedAt:
+        row.ai_graded_at,
+
+      createdAt:
+        row.created_at,
+
+      updatedAt:
+        row.updated_at,
+    };
+  }
+
+  async recalculateSubmissionScore(
+    submissionId
+  ) {
+    const result =
+      await pool.query(
+        `
+          WITH calculated AS (
+            SELECT
+              es.id,
+
+              COALESCE(
+                SUM(
+                  sa.awarded_points
+                ),
+                0
+              ) AS score,
+
+              COALESCE(
+                SUM(q.points),
+                0
+              ) AS max_score,
+
+              BOOL_AND(
+                sa.awarded_points
+                IS NOT NULL
+              ) AS all_graded
+
+            FROM exam_submissions es
+
+            JOIN submission_answers sa
+              ON sa.submission_id =
+                es.id
+
+            JOIN questions q
+              ON q.id =
+                sa.question_id
+
+            WHERE es.id = $1
+
+            GROUP BY es.id
+          )
+
+          UPDATE exam_submissions es
+          SET
+            score =
+              calculated.score,
+
+            max_score =
+              calculated.max_score,
+
+            percentage =
+              CASE
+                WHEN
+                  calculated.max_score > 0
+                THEN
+                  ROUND(
+                    (
+                      calculated.score /
+                      calculated.max_score
+                    ) * 100,
+                    2
+                  )
+                ELSE 0
+              END,
+
+            status =
+              CASE
+                WHEN
+                  calculated.all_graded
+                THEN 'graded'
+                ELSE 'submitted'
+              END,
+
+            graded_at =
+              CASE
+                WHEN
+                  calculated.all_graded
+                THEN NOW()
+                ELSE NULL
+              END,
+
+            updated_at = NOW()
+
+          FROM calculated
+
+          WHERE
+            es.id =
+            calculated.id
+
+          RETURNING es.*
+        `,
+        [submissionId]
+      );
+
+    if (!result.rows[0]) {
+      const error = new Error(
+        "Submission not found"
+      );
+      error.statusCode = 404;
+      throw error;
+    }
+
+    return result.rows[0];
+  }
+
+  async reviewAiGradingSuggestion(
+    submissionId,
+    questionId,
+    {
+      awardedPoints,
+      feedback,
+      aiGradingStatus,
+    }
+  ) {
+    const result =
+      await pool.query(
+        `
+          UPDATE submission_answers
+          SET
+            awarded_points = $1::numeric,
+            feedback = $2,
+            is_correct = CASE
+              WHEN $1::numeric IS NULL
+                THEN NULL
+              WHEN $1::numeric = 0
+                THEN FALSE
+              ELSE TRUE
+            END,
+            ai_grading_status = $3,
+            updated_at = NOW()
+          WHERE
+            submission_id = $4
+            AND question_id = $5
+          RETURNING *
+        `,
+        [
+          awardedPoints,
+          feedback || "",
+          aiGradingStatus,
+          submissionId,
+          questionId,
+        ]
+      );
+
+    if (!result.rows[0]) {
+      const error = new Error(
+        "Submission answer not found"
+      );
+      error.statusCode = 404;
+      throw error;
+    }
+
+    return mapSubmissionAnswerRow(
+      result.rows[0]
+    );
+  }
+
+  async updateAiGradingSuggestion(
+    submissionId,
+    questionId,
+    suggestion
+  ) {
+    const result =
+      await pool.query(
+        `
+          UPDATE submission_answers
+          SET
+            ai_awarded_points = $1,
+            ai_confidence = $2,
+            ai_feedback = $3,
+            ai_strengths = $4::JSONB,
+            ai_missing_concepts = $5::JSONB,
+            ai_grading_status = $6,
+            ai_graded_at = NOW(),
+            updated_at = NOW()
+          WHERE
+            submission_id = $7
+            AND question_id = $8
+          RETURNING *
+        `,
+        [
+          suggestion.awardedPoints ??
+            null,
+
+          suggestion.confidence ??
+            null,
+
+          suggestion.feedback || "",
+
+          JSON.stringify(
+            suggestion.strengths || []
+          ),
+
+          JSON.stringify(
+            suggestion.missingConcepts || []
+          ),
+
+          suggestion.status ||
+            "ai-suggestion-ready",
+
+          submissionId,
+          questionId,
+        ]
+      );
+
+    if (!result.rows[0]) {
+      const error = new Error(
+        "Submission answer not found"
+      );
+
+      error.statusCode = 404;
+      throw error;
+    }
+
+    return mapSubmissionAnswerRow(
+      result.rows[0]
+    );
   }
 
   async updateGrade(
@@ -268,31 +643,33 @@ class SubmissionRepository {
     }
   }
 
-  async getAnswers(
-    submissionId,
-    client = pool
-  ) {
-    const result = await client.query(
+  async getAnswers(submissionId) {
+    const result = await pool.query(
       `
         SELECT
-          id,
-          submission_id,
-          question_id,
-          answer,
-          is_correct,
-          awarded_points,
-          feedback,
-          created_at,
-          updated_at
-        FROM submission_answers
-        WHERE submission_id = $1
-        ORDER BY id ASC
+          sa.*,
+
+          q.type AS question_type,
+          q.question_text,
+          q.points AS question_points
+
+        FROM submission_answers sa
+
+        JOIN questions q
+          ON q.id = sa.question_id
+
+        WHERE sa.submission_id = $1
+
+        ORDER BY q.position ASC
       `,
       [submissionId]
     );
 
-    return result.rows.map((row) =>
-      this.mapAnswer(row)
+    return result.rows.map(
+      (row) =>
+        this.mapSubmissionAnswer(
+          row
+        )
     );
   }
 
@@ -357,13 +734,19 @@ class SubmissionRepository {
             sa.is_correct,
             sa.awarded_points,
             sa.feedback,
+
+            sa.ai_awarded_points,
+            sa.ai_confidence,
+            sa.ai_feedback,
+            sa.ai_strengths,
+            sa.ai_missing_concepts,
+            sa.ai_grading_status,
+            sa.ai_graded_at,
+
             sa.created_at,
             sa.updated_at
-
           FROM submission_answers sa
-
           WHERE sa.submission_id = $1
-
           ORDER BY sa.id ASC
         `,
         [id]
@@ -444,26 +827,7 @@ class SubmissionRepository {
       updatedAt: row.updated_at,
       answerDetails:
         answersResult.rows.map(
-          (row) => ({
-            id: row.id,
-            submissionId:
-              row.submission_id,
-            questionId:
-              row.question_id,
-            answer: row.answer,
-            isCorrect:
-              row.is_correct,
-
-            awardedPoints:
-              row.awarded_points === null
-                ? null
-                : Number(
-                    row.awarded_points
-                  ),
-
-            feedback:
-              row.feedback || "",
-          })
+          mapSubmissionAnswerRow
         ),
     };
   }

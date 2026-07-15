@@ -14,7 +14,7 @@ import documentRoutes from "./routes/documentRoutes.js";
 import errorHandler from "./middleware/errorHandler.js";
 
 import chatRoutes from "./routes/chatRoutes.js";
-
+import testRoutes from "./routes/testRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -125,6 +125,17 @@ app.get("/api/health", async (req, res) => {
     });
   }
 });
+console.log(
+  "NODE_ENV:",
+  process.env.NODE_ENV
+);
+
+if (process.env.NODE_ENV === "test") {
+  app.use(
+    "/api/test",
+    testRoutes
+  );
+}
 
 app.use(errorHandler);
 
