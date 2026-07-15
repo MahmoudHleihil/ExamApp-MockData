@@ -156,17 +156,61 @@ console.log(
   };
 
   // פונקציית תחילת הבחינה.
-  const startTakingExam = () => {
-    // בדיקת הסיסמה.
-    if (exam.password && enteredPassword !== exam.password) {
-      setPasswordError('Incorrect password. Please try again.');
+  const startTakingExam = async () => {
+    if (!exam?.id) {
+      setError(
+        "No active exam was found."
+      );
       return;
     }
-    setIsExamStarted(true);
-    setCurrentQuestionIndex(0);
-    setSelectedAnswers({});
-    setIsSubmitted(false);
-    navigate(`/student/exams/${exam.id}/take`);
+
+    setPasswordError("");
+    setLoading(true);
+
+    try {
+      if (exam.passwordRequired) {
+        if (!enteredPassword.trim()) {
+          setPasswordError(
+            "Please enter the exam password."
+          );
+          return;
+        }
+
+        await examService
+          .verifyExamPassword(
+            exam.id,
+            enteredPassword
+          );
+      }
+
+      setIsExamStarted(true);
+      setCurrentQuestionIndex(0);
+      setSelectedAnswers({});
+      setIsSubmitted(false);
+
+      navigate(
+        `/student/exams/${exam.id}/take`
+      );
+    } catch (error) {
+      if (
+        error?.status === 403 ||
+        /incorrect exam password/i.test(
+          error?.message || ""
+        )
+      ) {
+        setPasswordError(
+          "Incorrect password. Please try again."
+        );
+        return;
+      }
+
+      setError(
+        error?.message ||
+        "Failed to start exam."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   // פונקציה של שינוי התשובה של השאלה.

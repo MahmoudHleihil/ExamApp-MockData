@@ -197,6 +197,61 @@ export const examService = {
     };
   },
 
+  verifyExamPassword: async (
+    examId,
+    password
+  ) => {
+    if (!API_CONFIG.useMock) {
+      const response = await fetch(
+        `${API_CONFIG.baseUrl}/exams/take/${encodeURIComponent(
+          examId
+        )}/verify-password`,
+        getFetchConfig("POST", {
+          password,
+        })
+      );
+
+      return parseApiResponse(
+        response,
+        "Failed to verify exam password"
+      );
+    }
+
+    const exam = mockDb.exams.find(
+      (item) => item.id === examId
+    );
+
+    if (!exam) {
+      throw new Error(
+        "Exam not found"
+      );
+    }
+
+    if (!exam.password) {
+      return {
+        success: true,
+        passwordRequired: false,
+      };
+    }
+
+    if (
+      String(password || "") !==
+      String(exam.password)
+    ) {
+      const error = new Error(
+        "Incorrect exam password"
+      );
+
+      error.status = 403;
+      throw error;
+    }
+
+    return {
+      success: true,
+      passwordRequired: true,
+    };
+  },
+
   createExam: async (exam) => {
     if (!API_CONFIG.useMock) {
         const response =

@@ -3,6 +3,37 @@ import SubmissionRepository from "../repositories/SubmissionRepository.js";
 import { mockDb } from "../data/mockDb.js";
 import NotificationService from "./NotificationService.js";
 import { randomUUID } from "crypto";
+import bcrypt from "bcryptjs";
+
+function sanitizeExamForClient(exam) {
+  if (!exam || typeof exam !== "object") {
+    return exam;
+  }
+
+  const {
+    password,
+    passwordHash,
+    password_hash,
+    ...safeExam
+  } = exam;
+
+  const isPublished = Boolean(
+    exam.isPublished ??
+    exam.published
+  );
+
+  return {
+    ...safeExam,
+
+    published: isPublished,
+    isPublished,
+
+    passwordRequired: Boolean(
+      passwordHash ||
+      password_hash
+    ),
+  };
+}
 
 class ExamService {
 
@@ -310,39 +341,56 @@ class ExamService {
     }
 
     async createExam(examData, user) {
-    if (!user?.id) {
-        const error = new Error(
-        "Authenticated user is required"
-        );
+        if (!user?.id) {
+            const error = new Error(
+            "Authenticated user is required"
+            );
 
-        error.statusCode = 401;
-        throw error;
-    }
+            error.statusCode = 401;
+            throw error;
+        }
 
-    if (
-        !["Teacher", "Admin"].includes(
-        user.role
-        )
-    ) {
-        const error = new Error(
-        "Forbidden: Only teachers and admins can create exams"
-        );
+        if (
+            !["Teacher", "Admin"].includes(
+            user.role
+            )
+        ) {
+            const error = new Error(
+            "Forbidden: Only teachers and admins can create exams"
+            );
 
-        error.statusCode = 403;
-        throw error;
-    }
+            error.statusCode = 403;
+            throw error;
+        }
 
-    return await ExamRepository.create({
-        ...examData,
+        const plainPassword =
+        typeof examData.password === "string"
+            ? examData.password.trim()
+            : "";
 
-        createdBy: user.id,
+        const passwordHash =
+        plainPassword
+            ? await bcrypt.hash(
+                plainPassword,
+                12
+            )
+            : null;
 
-        published: false,
-        isPublished: false,
+        const examToCreate = {
+            ...examData,    
+            createdBy: user.id,
+            passwordHash,
+            published: false,
+            isPublished: false,
 
-        createdAt: undefined,
-        updatedAt: undefined,
-    });
+            createdAt: undefined,
+            updatedAt: undefined,
+        };
+
+        delete examToCreate.password;
+
+        const createdExam = await ExamRepository.create(examToCreate);
+        return sanitizeExamForClient(createdExam);
     }
 
     async updateExam(
@@ -365,8 +413,8 @@ class ExamService {
     }
 
     const isOwner =
-        existingExam.createdBy ===
-        user.id;
+        String(existingExam.createdBy) ===
+        String(user.id);
 
     if (
         user.role !== "Admin" &&
@@ -380,31 +428,84 @@ class ExamService {
         throw error;
     }
 
-    const normalizedUpdates = {
+    const safeUpdates = {
         ...updates,
     };
 
+    /*
+    * Normalize publication field.
+    */
     if (
-        normalizedUpdates.published ===
+        safeUpdates.published ===
         undefined &&
-        normalizedUpdates.isPublished !==
+        safeUpdates.isPublished !==
         undefined
     ) {
-        normalizedUpdates.published =
-        normalizedUpdates.isPublished;
+        safeUpdates.published =
+        safeUpdates.isPublished;
     }
 
-    delete normalizedUpdates.isPublished;
-    delete normalizedUpdates.id;
-    delete normalizedUpdates.createdBy;
-    delete normalizedUpdates.teacherId;
-    delete normalizedUpdates.teacherEmail;
-    delete normalizedUpdates.createdAt;
-    delete normalizedUpdates.updatedAt;
+    delete safeUpdates.isPublished;
 
-    return ExamRepository.update(
+    /*
+    * Prevent immutable or server-owned
+    * fields from being modified.
+    */
+    delete safeUpdates.id;
+    delete safeUpdates.createdBy;
+    delete safeUpdates.teacherId;
+    delete safeUpdates.teacherEmail;
+    delete safeUpdates.createdAt;
+    delete safeUpdates.updatedAt;
+
+    /*
+    * Hash a newly supplied password.
+    *
+    * An empty password explicitly removes
+    * password protection.
+    */
+    if (
+        Object.prototype.hasOwnProperty.call(
+        safeUpdates,
+        "password"
+        )
+    ) {
+        const password =
+        String(
+            safeUpdates.password || ""
+        ).trim();
+
+        safeUpdates.passwordHash =
+        password
+            ? await bcrypt.hash(
+                password,
+                12
+            )
+            : null;
+    }
+
+    /*
+    * Never pass plaintext passwords to
+    * the repository.
+    */
+    delete safeUpdates.password;
+
+    const updatedExam =
+        await ExamRepository.update(
         examId,
-        normalizedUpdates
+        safeUpdates
+        );
+
+    if (!updatedExam) {
+        const error =
+        new Error("Exam not found");
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    return sanitizeExamForClient(
+        updatedExam
     );
     }
 
@@ -1396,6 +1497,69 @@ class ExamService {
 
         questions,
     };
+    }
+
+    async verifyExamPassword(
+    examId,
+    password,
+    user
+    ) {
+        if (!user?.id) {
+            const error = new Error(
+            "Authentication required"
+            );
+            error.statusCode = 401;
+            throw error;
+        }
+
+        const exam =
+            await ExamRepository.findById(
+            examId
+            );
+
+        if (!exam) {
+            const error =
+            new Error("Exam not found");
+            error.statusCode = 404;
+            throw error;
+        }
+
+        if (
+            !exam.published &&
+            !exam.isPublished
+        ) {
+            const error = new Error(
+            "Exam is not published"
+            );
+            error.statusCode = 403;
+            throw error;
+        }
+
+        if (!exam.passwordHash) {
+            return {
+            success: true,
+            passwordRequired: false,
+            };
+        }
+
+        const matches =
+            await bcrypt.compare(
+            String(password || ""),
+            exam.passwordHash
+            );
+
+        if (!matches) {
+            const error = new Error(
+            "Incorrect exam password"
+            );
+            error.statusCode = 403;
+            throw error;
+        }
+
+        return {
+            success: true,
+            passwordRequired: true,
+        };
     }
 }
 

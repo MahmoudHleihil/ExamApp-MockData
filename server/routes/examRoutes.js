@@ -78,6 +78,13 @@ router.get(
   ExamController.getAvailableExams
 );
 
+router.post(
+  "/take/:id/verify-password",
+  authenticate,
+  authorize("Student"),
+  ExamController.verifyExamPassword
+);
+
 router.get(
   "/take/:id",
   authenticate,

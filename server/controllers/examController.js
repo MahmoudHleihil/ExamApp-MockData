@@ -270,3 +270,22 @@ export const getStudentSubmissionReview =
       next(error);
     }
   };
+
+export const verifyExamPassword = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const result =
+      await ExamService.verifyExamPassword(
+        req.params.id,
+        req.body.password,
+        req.user
+      );
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};

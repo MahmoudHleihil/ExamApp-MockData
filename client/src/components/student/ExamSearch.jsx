@@ -97,39 +97,61 @@ const ExamSearch = ({
               </div>
               
               {/* הזנת סיסמת הבחינה אם יש */}
-              {exam.password && (
+              {exam.passwordRequired && (
                 <div className="mb-3">
-                  <label className="form-label fw-bold small text-uppercase text-muted">This exam is password protected</label>
-                  <input 
-                    type="password" 
-                    className={`form-control ${passwordError ? 'is-invalid' : ''}`}
+                  <label className="form-label fw-bold small text-uppercase text-muted">
+                    This exam is password protected
+                  </label>
+
+                  <input
+                    type="password"
+                    className={`form-control ${
+                      passwordError
+                        ? "is-invalid"
+                        : ""
+                    }`}
                     placeholder="Enter password to start"
                     value={enteredPassword}
-                    onChange={(e) => {
-                      setEnteredPassword(e.target.value);
-                      setPasswordError('');
+                    onChange={(event) => {
+                      setEnteredPassword(
+                        event.target.value
+                      );
+                      setPasswordError("");
                     }}
                     data-testid="student-exam-password"
+                    autoComplete="current-password"
                   />
-                  {/* שגיאה בסיסמה */}
-                  {passwordError && <div className="invalid-feedback"
-                  data-testid="student-password-error">{passwordError}</div>}
+
+                  {passwordError && (
+                    <div
+                      className="invalid-feedback"
+                      data-testid="student-password-error"
+                    >
+                      {passwordError}
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* תחילת הבחינה */}
-              <button 
-                className={`btn btn-lg w-100 fw-bold shadow-sm ${isBeforeStart ? 'btn-secondary' : 'btn-success'}`} 
+              <button
+                className={`btn btn-lg w-100 fw-bold shadow-sm ${
+                  isBeforeStart
+                    ? "btn-secondary"
+                    : "btn-success"
+                }`}
                 onClick={startTakingExam}
-                disabled={isBeforeStart}
+                disabled={
+                  isBeforeStart ||
+                  loading
+                }
                 data-testid="student-start-exam"
               >
-                {isBeforeStart ? (
-                  <>
-                    <span className="spinner-grow spinner-grow-sm me-2" role="status" aria-hidden="true"></span>
-                    Waiting for Exam to Open...
-                  </>
-                ) : 'Start Exam Now'}
+                {loading
+                  ? "Verifying..."
+                  : isBeforeStart
+                    ? "Waiting for Exam to Open..."
+                    : "Start Exam Now"}
               </button>
             </div>
           )}

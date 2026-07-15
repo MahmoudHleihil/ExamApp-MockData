@@ -49,34 +49,32 @@ const TeacherDashboard = ({ user }) => {
     );
   };
 
-  const handlePublishExam = async (id) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to publish this exam?"
-    );
+  const handlePublishExam =
+    async (examId) => {
+      const response =
+        await examService.publishExam(
+          examId
+        );
 
-    if (!confirmed) {
-      return;
-    }
+      const publishedExam =
+        response?.exam ||
+        response?.data ||
+        response;
 
-    try {
-      setPublishingId(id);
-
-      await examService.publishExam(id);
-      await fetchExams();
-    } catch (error) {
-      console.error(
-        "Failed to publish exam:",
-        error
+      setExams((current) =>
+        current.map((exam) =>
+          String(exam.id) ===
+          String(examId)
+            ? {
+                ...exam,
+                ...publishedExam,
+                published: true,
+                isPublished: true,
+              }
+            : exam
+        )
       );
-
-      alert(
-        error?.message ||
-        "Failed to publish exam"
-      );
-    } finally {
-      setPublishingId(null);
-    }
-  };
+    };
 
   // טעינת המבחנים
   const fetchExams = async () => {
@@ -156,6 +154,20 @@ const TeacherDashboard = ({ user }) => {
     try {
       if (isEditing) {
         await examService.updateExam(editExamId, formData);
+
+        const refreshedExams =
+          await examService.getAllExams();
+
+        setExams(
+          Array.isArray(refreshedExams)
+            ? refreshedExams
+            : refreshedExams?.exams ||
+              refreshedExams?.data ||
+              []
+        );
+
+        setEditExamId(null);
+        navigate("/teacher/exams");
       } else {
         await examService.createExam(formData);
       }
