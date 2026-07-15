@@ -155,45 +155,17 @@ test.describe(
             )
             .fill(examId);
 
-          const examResponsePromise =
-            page.waitForResponse(
-              (response) => {
-                const url =
-                  new URL(
-                    response.url()
-                  );
-
-                return (
-                  response
-                    .request()
-                    .method() === "GET" &&
-                  url.pathname ===
-                    `/api/exams/${examId}`
-                );
-              },
-              {
-                timeout: 15_000,
-              }
-            );
+          await expect(
+            page.getByTestId(
+              "student-exam-id"
+            )
+          ).toHaveValue(examId);
 
           await page
             .getByTestId(
               "student-search-exam"
             )
             .click();
-
-          const examResponse =
-            await examResponsePromise;
-
-          const examResponseText =
-            await examResponse
-              .text()
-              .catch(() => "");
-
-          expect(
-            examResponse.ok(),
-            `Exam lookup failed with ${examResponse.status()}: ${examResponseText}`
-          ).toBeTruthy();
 
           await expect(
             page.getByTestId(
@@ -207,9 +179,7 @@ test.describe(
             page.getByTestId(
               "student-exam-title"
             )
-          ).toHaveText(
-            examTitle
-          );
+          ).toHaveText(examTitle);
 
           await page
             .getByTestId(
@@ -241,9 +211,7 @@ test.describe(
             page.getByTestId(
               "student-exam-heading"
             )
-          ).toHaveText(
-            examTitle
-          );
+          ).toHaveText(examTitle);
 
           await expect(
             page.getByTestId(
@@ -263,10 +231,11 @@ test.describe(
             page.getByTestId(
               "student-answer-0-0"
             )
-          ).toHaveClass(
-            /active/
-          );
+          ).toHaveClass(/active/);
 
+          /*
+           * Open the confirmation modal first.
+           */
           await page
             .getByTestId(
               "student-submit-exam"
@@ -279,6 +248,30 @@ test.describe(
             )
           ).toBeVisible();
 
+          /*
+           * Start listening before the confirmation
+           * button triggers the network request.
+           */
+          const submitRequestPromise =
+            page.waitForRequest(
+              (request) => {
+                const url =
+                  new URL(
+                    request.url()
+                  );
+
+                return (
+                  request.method() ===
+                    "POST" &&
+                  url.pathname ===
+                    "/api/exams/submit"
+                );
+              },
+              {
+                timeout: 15_000,
+              }
+            );
+
           const submitResponsePromise =
             page.waitForResponse(
               (response) => {
@@ -290,7 +283,8 @@ test.describe(
                 return (
                   response
                     .request()
-                    .method() === "POST" &&
+                    .method() ===
+                    "POST" &&
                   url.pathname ===
                     "/api/exams/submit"
                 );
@@ -306,8 +300,40 @@ test.describe(
             )
             .click();
 
-          const submitResponse =
-            await submitResponsePromise;
+          const [
+            submitRequest,
+            submitResponse,
+          ] = await Promise.all([
+            submitRequestPromise,
+            submitResponsePromise,
+          ]);
+
+          const payload =
+            submitRequest.postDataJSON();
+
+          expect(payload).toEqual({
+            examId,
+            answers:
+              expect.any(Object),
+          });
+
+          expect(
+            payload
+          ).not.toHaveProperty(
+            "score"
+          );
+
+          expect(
+            payload
+          ).not.toHaveProperty(
+            "percentage"
+          );
+
+          expect(
+            payload
+          ).not.toHaveProperty(
+            "studentId"
+          );
 
           const submitResponseText =
             await submitResponse
@@ -332,27 +358,22 @@ test.describe(
             submittedRecord = null;
           }
 
-          console.log(
-            "Submit response:",
-            JSON.stringify(
-              submittedRecord,
-              null,
-              2
-            )
-          );
-
           const submittedExamId =
             submittedRecord?.examId ??
             submittedRecord?.exam_id ??
-            submittedRecord?.submission
-              ?.examId ??
-            submittedRecord?.data
-              ?.examId;
+            submittedRecord
+              ?.submission?.examId ??
+            submittedRecord
+              ?.data?.examId;
 
           if (submittedExamId) {
             expect(
-              String(submittedExamId)
-            ).toBe(String(examId));
+              String(
+                submittedExamId
+              )
+            ).toBe(
+              String(examId)
+            );
           }
 
           await expect(
@@ -381,94 +402,114 @@ test.describe(
             page.getByTestId(
               "student-pass-status"
             )
-          ).toHaveText("PASSED");
+          ).toHaveText(
+            "PASSED"
+          );
 
           await page.reload();
 
           /*
-           * The result page uses React state, so after
-           * refresh the app may redirect to the search
-           * page. The submission itself must still exist
-           * in PostgreSQL.
+           * The result view is stored in React state,
+           * so after refresh the app may redirect.
+           * Verify the submission directly through
+           * the authenticated student endpoint.
            */
-            const submissionsResponse =
-              await page.request.get(
-                `${backendUrl}/api/exams/my-submissions`
-              );
-
-            const submissionsBody =
-              await submissionsResponse
-                .json()
-                .catch(() => null);
-
-            expect(
-              submissionsResponse.ok(),
-              `Could not load student submissions. Status: ${
-                submissionsResponse.status()
-              }, body: ${JSON.stringify(
-                submissionsBody
-              )}`
-            ).toBeTruthy();
-
-            console.log(
-              "My submissions response:",
-              JSON.stringify(
-                submissionsBody,
-                null,
-                2
-              )
+          const submissionsResponse =
+            await page.request.get(
+              `${backendUrl}/api/exams/my-submissions`
             );
 
-            const submissions =
-              Array.isArray(submissionsBody)
+          const submissionsBody =
+            await submissionsResponse
+              .json()
+              .catch(() => null);
+
+          expect(
+            submissionsResponse.ok(),
+            `Could not load student submissions. Status: ${
+              submissionsResponse.status()
+            }, body: ${JSON.stringify(
+              submissionsBody
+            )}`
+          ).toBeTruthy();
+
+          const submissions =
+            Array.isArray(
+              submissionsBody
+            )
+              ? submissionsBody
+              : Array.isArray(
+                  submissionsBody
+                    ?.submissions
+                )
                 ? submissionsBody
+                    .submissions
                 : Array.isArray(
-                    submissionsBody?.submissions
+                    submissionsBody
+                      ?.data
                   )
-                  ? submissionsBody.submissions
-                  : Array.isArray(
-                      submissionsBody?.data
+                  ? submissionsBody
+                      .data
+                  : [];
+
+          expect(
+            submissions.length,
+            `No submissions were returned. Body: ${JSON.stringify(
+              submissionsBody
+            )}`
+          ).toBeGreaterThan(0);
+
+          const storedSubmission =
+            submissions.find(
+              (submission) => {
+                const storedExamId =
+                  submission.examId ??
+                  submission.exam_id ??
+                  submission.exam
+                    ?.id;
+
+                return (
+                  String(
+                    storedExamId
+                  ) ===
+                  String(examId)
+                );
+              }
+            );
+
+          expect(
+            storedSubmission,
+            `Submitted exam ${examId} was not found. Returned submissions: ${JSON.stringify(
+              submissions
+            )}`
+          ).toBeTruthy();
+
+          const storedPercentage =
+            storedSubmission
+              .percentage ??
+            (
+              Number(
+                storedSubmission
+                  .maxScore
+              ) > 0
+                ? (
+                    Number(
+                      storedSubmission
+                        .score
+                    ) /
+                    Number(
+                      storedSubmission
+                        .maxScore
                     )
-                    ? submissionsBody.data
-                    : [];
+                  ) * 100
+                : 0
+            );
 
-            expect(
-              submissions.length,
-              `No submissions were returned. Body: ${JSON.stringify(
-                submissionsBody
-              )}`
-            ).toBeGreaterThan(0);
-
-            const storedSubmission =
-              submissions.find(
-                (submission) => {
-                  const submissionExamId =
-                    submission.examId ??
-                    submission.exam_id ??
-                    submission.exam?.id;
-
-                  return (
-                    String(submissionExamId) ===
-                    String(examId)
-                  );
-                }
-              );
-
-            expect(
-              storedSubmission,
-              `Submitted exam ${examId} was not found. Returned submissions: ${JSON.stringify(
-                submissions
-              )}`
-            ).toBeTruthy();
-
-            const storedScore =
-              storedSubmission.score ??
-              storedSubmission.percentage ??
-              storedSubmission.result?.score;
-
-            expect(
-              Number(storedScore)
-            ).toBe(100);
+          expect(
+            Number(
+              storedPercentage
+            )
+          ).toBe(100);
         } finally {
           if (examId) {
             await teacherApi.delete(

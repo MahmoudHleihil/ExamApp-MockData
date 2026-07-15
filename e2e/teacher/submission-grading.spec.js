@@ -131,40 +131,11 @@ test.describe(
               )
           ).not.toHaveText("");
 
-          const examResponsePromise =
-            page.waitForResponse(
-              (response) => {
-                const url =
-                  new URL(
-                    response.url()
-                  );
-
-                return (
-                  response
-                    .request()
-                    .method() ===
-                    "GET" &&
-                  url.pathname ===
-                    `/api/exams/${examId}`
-                );
-              },
-              {
-                timeout: 15_000,
-              }
-            );
-
           await submissionRow
             .getByTestId(
               "submission-view-button"
             )
             .click();
-
-          const examResponse =
-            await examResponsePromise;
-
-          expect(
-            examResponse.ok()
-          ).toBeTruthy();
 
           await expect(
             page.getByTestId(
@@ -248,6 +219,50 @@ test.describe(
             `Saving feedback failed with ${updateResponse.status()}: ${updateText}`
           ).toBeTruthy();
 
+          let updateBody = null;
+
+          try {
+            updateBody =
+              updateText
+                ? JSON.parse(updateText)
+                : null;
+          } catch {
+            updateBody = null;
+          }
+
+          const updatedSubmission =
+            updateBody?.submission ||
+            updateBody?.data ||
+            updateBody;
+
+          expect(
+            updatedSubmission,
+            `The feedback endpoint returned an invalid response: ${updateText}`
+          ).toBeTruthy();
+
+          expect(
+            Number(updatedSubmission.score),
+            `Feedback update changed the earned-points score. Response: ${updateText}`
+          ).toBe(10);
+
+          expect(
+            Number(updatedSubmission.maxScore),
+            `Feedback update changed maxScore. Response: ${updateText}`
+          ).toBe(10);
+
+          expect(
+            Number(updatedSubmission.percentage),
+            `Feedback update changed percentage. Response: ${updateText}`
+          ).toBe(100);
+
+          expect(
+            updatedSubmission.feedback
+          ).toBe(feedbackText);
+
+          expect(
+            updatedSubmission.isFeedbackVisible
+          ).toBe(true);
+
           await expect(
             page.getByTestId(
               "submission-save-success"
@@ -264,6 +279,33 @@ test.describe(
           await page.goto(
             "/#/teacher/submissions"
           );
+          
+const submissionsResponse =
+  await teacherApi.get(
+    "/api/exams/submissions"
+  );
+
+const submissionsBody =
+  await submissionsResponse.json();
+
+const submissions =
+  Array.isArray(submissionsBody)
+    ? submissionsBody
+    : submissionsBody?.submissions ||
+      submissionsBody?.data ||
+      [];
+
+const persistedSubmission =
+  submissions.find(
+    (item) =>
+      String(item.id) ===
+      String(persistedSubmissionId)
+  );
+
+expect(persistedSubmission).toBeTruthy();
+expect(Number(persistedSubmission.score)).toBe(10);
+expect(Number(persistedSubmission.maxScore)).toBe(10);
+expect(Number(persistedSubmission.percentage)).toBe(100);
 
           await expect(
             page.getByTestId(

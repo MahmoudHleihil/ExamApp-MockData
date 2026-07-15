@@ -139,6 +139,135 @@ class SubmissionRepository {
     };
   }
 
+  async updateGrade(
+    submissionId,
+    updates
+  ) {
+    const client =
+      await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const submissionResult =
+        await client.query(
+          `
+            UPDATE exam_submissions
+            SET
+              status = 'graded',
+              score = $1,
+              percentage = $2,
+              feedback = $3,
+              is_feedback_visible = $4,
+              is_score_published = $5,
+              graded_by = $6,
+              graded_at = NOW()
+            WHERE id = $7
+            RETURNING id
+          `,
+          [
+            updates.score,
+            updates.percentage,
+            updates.feedback || "",
+            Boolean(
+              updates.isFeedbackVisible
+            ),
+            Boolean(
+              updates.isScorePublished
+            ),
+            updates.gradedBy,
+            submissionId,
+          ]
+        );
+
+      if (!submissionResult.rows[0]) {
+        const error =
+          new Error(
+            "Submission not found"
+          );
+
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const answers = Array.isArray(updates.answers)
+        ? updates.answers
+        : [];
+
+      for (const answer of answers) {
+        const answerResult = await client.query(
+          `
+            INSERT INTO submission_answers (
+              submission_id,
+              question_id,
+              answer,
+              is_correct,
+              awarded_points,
+              feedback
+            )
+            VALUES (
+              $1,
+              $2,
+              $3::JSONB,
+              $4,
+              $5,
+              $6
+            )
+            ON CONFLICT (
+              submission_id,
+              question_id
+            )
+            DO UPDATE SET
+              answer = COALESCE(
+                submission_answers.answer,
+                EXCLUDED.answer
+              ),
+              is_correct = COALESCE(
+                EXCLUDED.is_correct,
+                submission_answers.is_correct
+              ),
+              awarded_points =
+                EXCLUDED.awarded_points,
+              feedback =
+                EXCLUDED.feedback
+            RETURNING
+              question_id,
+              awarded_points,
+              feedback
+          `,
+          [
+            submissionId,
+            answer.questionId,
+            JSON.stringify(
+              answer.answer ?? null
+            ),
+            answer.isCorrect ?? null,
+            Number(
+              answer.awardedPoints ?? 0
+            ),
+            answer.feedback || "",
+          ]
+        );
+
+        if (!answerResult.rows[0]) {
+          throw new Error(
+            `Failed to save grade for question ${answer.questionId}`
+          );
+        }
+      }
+
+      await client.query("COMMIT");
+
+      return this
+        .findById(submissionId);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async getAnswers(
     submissionId,
     client = pool
@@ -313,6 +442,29 @@ class SubmissionRepository {
 
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      answerDetails:
+        answersResult.rows.map(
+          (row) => ({
+            id: row.id,
+            submissionId:
+              row.submission_id,
+            questionId:
+              row.question_id,
+            answer: row.answer,
+            isCorrect:
+              row.is_correct,
+
+            awardedPoints:
+              row.awarded_points === null
+                ? null
+                : Number(
+                    row.awarded_points
+                  ),
+
+            feedback:
+              row.feedback || "",
+          })
+        ),
     };
   }
 
@@ -548,41 +700,49 @@ class SubmissionRepository {
         );
 
       const answers =
-        data.answers &&
-        typeof data.answers ===
-          "object"
+        Array.isArray(data.answers)
           ? data.answers
-          : {};
+          : Object.entries(
+              data.answers || {}
+            ).map(
+              ([questionId, answer]) => ({
+                questionId,
+                answer,
+                isCorrect: null,
+                awardedPoints: null,
+                feedback: "",
+              })
+            );
 
-      for (
-        const [
-          questionId,
-          answer,
-        ] of Object.entries(answers)
-      ) {
+      for (const answer of answers) {
         await client.query(
           `
             INSERT INTO submission_answers (
               submission_id,
               question_id,
               answer,
+              is_correct,
+              awarded_points,
               feedback
             )
             VALUES (
               $1,
               $2,
               $3::JSONB,
-              $4
+              $4,
+              $5,
+              $6
             )
           `,
           [
             submissionId,
-            questionId,
-            JSON.stringify(answer),
-
-            data.questionFeedback?.[
-              questionId
-            ] || "",
+            answer.questionId,
+            JSON.stringify(
+              answer.answer ?? null
+            ),
+            answer.isCorrect,
+            answer.awardedPoints,
+            answer.feedback || "",
           ]
         );
       }
@@ -751,31 +911,21 @@ class SubmissionRepository {
               feedback = $1,
               is_feedback_visible = $2,
               is_score_published = $2,
-              score = $3,
-              percentage = $3,
-              graded_by = $4,
+              graded_by = $3,
               status = 'graded',
-              graded_at = NOW()
-            WHERE id = $5
+              graded_at = COALESCE(
+                graded_at,
+                NOW()
+              )
+            WHERE id = $4
             RETURNING id
           `,
           [
             updates.feedback || "",
-
             Boolean(
               updates.isFeedbackVisible
             ),
-
-            updates.score ===
-            undefined
-              ? null
-              : Number(
-                  updates.score
-                ),
-
-            updates.gradedBy ||
-              null,
-
+            updates.gradedBy || null,
             submissionId,
           ]
         );
@@ -785,18 +935,15 @@ class SubmissionRepository {
           new Error(
             "Submission not found"
           );
-
         error.statusCode = 404;
         throw error;
       }
 
       const questionFeedback =
         updates.questionFeedback &&
-        typeof updates
-          .questionFeedback ===
+        typeof updates.questionFeedback ===
           "object"
-          ? updates
-              .questionFeedback
+          ? updates.questionFeedback
           : {};
 
       for (
@@ -825,10 +972,9 @@ class SubmissionRepository {
 
       await client.query("COMMIT");
 
-      return this
-        .findById(
-          submissionId
-        );
+      return this.findById(
+        submissionId
+      );
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;

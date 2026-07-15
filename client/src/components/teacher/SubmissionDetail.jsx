@@ -60,16 +60,20 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
     setSaveMessage('');
     const finalScore = calculateScore();
     try {
-      await examService.updateSubmissionFeedback(submission.id, feedback, questionFeedback, isFeedbackVisible, finalScore);
+      const updatedSubmission = await examService.updateSubmissionFeedback(submission.id, feedback, questionFeedback, isFeedbackVisible);
       
       // If the review is released, notify the student
       if (isFeedbackVisible) {
-        notificationService.addNotification({
-          studentName: submission.studentName, // Used for routing if userId isn't available
-          title: 'Feedback Released',
-          message: `Your results for "${exam.title}" are now available. Score: ${finalScore.toFixed(0)}%`,
-          type: 'feedback'
-        });
+        try {
+          notificationService.addNotification({
+            userId: submission.studentId, 
+            title: 'Feedback Released',
+            message: `Your results for "${exam.title}" are now available. Score: ${finalScore.toFixed(0)}%`,
+            type: 'feedback'
+          });
+        } catch (notificationError) {
+          console.error("Failed to create grading notification:", notificationError);
+        }
       }
 
       setSaveMessage('Review released successfully!');
@@ -89,6 +93,24 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
       [qId]: text
     }));
   };
+
+  const earnedPoints =
+    Number(submission.score ?? 0);
+
+  const maxPoints =
+    Number(submission.maxScore ?? 0);
+
+  const storedPercentage =
+    Number(submission.percentage);
+
+  const displayedPercentage =
+    Number.isFinite(storedPercentage) &&
+    storedPercentage >= 0 &&
+    storedPercentage <= 100
+      ? storedPercentage
+      : maxPoints > 0
+        ? (earnedPoints / maxPoints) * 100
+        : 0;
 
   return (
     <div className="animate__animated animate__fadeIn" data-testid="submission-detail">
@@ -115,8 +137,8 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
         <div className="col-md-3">
           <div className="card border-0 shadow-sm h-100 p-3 text-center">
             <small className="text-uppercase text-muted fw-bold mb-2">Calculated Score</small>
-            <h2 data-testid="submission-score" className={`display-5 fw-bold mb-0 ${submission.score >= 60 ? 'text-success' : 'text-danger'}`}>
-              {submission.score.toFixed(0)}%
+            <h2 data-testid="submission-score" className={`display-5 fw-bold mb-0 ${displayedPercentage >= 60 ? 'text-success' : 'text-danger'}`}>
+              {displayedPercentage.toFixed(0)}%
             </h2>
           </div>
         </div>

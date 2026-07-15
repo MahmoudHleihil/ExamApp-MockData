@@ -24,6 +24,7 @@
     "test:ci": "npm run db:migrate:test && npm run test:mcp-confirmations",
     "test:conversations": "node --test tests/conversationCrud.test.js",
     "test:submission-permissions": "node --test tests/submissionPermissions.test.js",
+    "test:student-exam-security": "node --test tests/studentExamSecurity.test.js",
     "test:integration": "node --test tests/*.test.js",
     "init-db": "node scripts/initDb.js",
     "seed-db": "node scripts/seedDb.js",

@@ -128,6 +128,75 @@ export const examService = {
     );
   },
 
+  getExamForStudent: async (id) => {
+    if (!API_CONFIG.useMock) {
+      console.log(
+        "Loading student exam:",
+        `${API_CONFIG.baseUrl}/exams/take/${encodeURIComponent(
+          id
+        )}`
+      );
+      const response = await fetch(
+        `${API_CONFIG.baseUrl}/exams/take/${encodeURIComponent(
+          id
+        )}`,
+        getFetchConfig()
+      );
+
+      return parseApiResponse(
+        response,
+        "Exam not found"
+      );
+    }
+
+    await delay(500);
+
+    const exam = mockDb.exams.find(
+      (item) => item.id === id
+    );
+
+    if (!exam) {
+      throw new Error("Exam not found");
+    }
+
+    if (
+      !exam.published &&
+      !exam.isPublished
+    ) {
+      throw new Error(
+        "Exam is not published"
+      );
+    }
+
+    return {
+      id: exam.id,
+      title: exam.title,
+      description: exam.description,
+      subject: exam.subject,
+      timeLimit: exam.timeLimit,
+      earlyAccessMinutes:
+        exam.earlyAccessMinutes,
+      isAlwaysAvailable:
+        exam.isAlwaysAvailable,
+      scheduledDate:
+        exam.scheduledDate,
+      passingScore:
+        exam.passingScore,
+      passwordRequired:
+        Boolean(exam.password),
+
+      questions: (
+        exam.questions || []
+      ).map(
+        ({
+          correctAnswer,
+          sourceEvidence,
+          ...question
+        }) => question
+      ),
+    };
+  },
+
   createExam: async (exam) => {
     if (!API_CONFIG.useMock) {
         const response =
@@ -156,64 +225,63 @@ export const examService = {
     return newExam;
   },
 
-  updateExam: async (id, updatedExam) => {
+  updateExam: async (
+    id,
+    updatedExam
+  ) => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/exams/${id}`, getFetchConfig('PUT', updatedExam));
-      
-      return await parseApiResponse(response, "Failed to update exam");
+      const response = await fetch(
+        `${API_CONFIG.baseUrl}/exams/${encodeURIComponent(
+          id
+        )}`,
+        getFetchConfig(
+          "PUT",
+          updatedExam
+        )
+      );
+
+      return parseApiResponse(
+        response,
+        "Failed to update exam"
+      );
     }
-    logger.debug('Updating exam', { examId: id });
-    await delay(800);
-    const index = mockDb.exams.findIndex(e => e.id === id);
-    if (index === -1) {
-      logger.error('Update failed: Exam not found', { examId: id });
-      throw new Error('Exam not found');
-    }
-    mockDb.exams[index] = { ...updatedExam, id };
-    logger.info('Exam updated successfully', { examId: id });
-    return mockDb.exams[index];
+
+    // mock implementation...
   },
 
   deleteExam: async (id) => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/exams/${id}`, getFetchConfig('DELETE'));
-      
-      return await parseApiResponse(response, "Failed to delete exam");
+      const response = await fetch(
+        `${API_CONFIG.baseUrl}/exams/${encodeURIComponent(
+          id
+        )}`,
+        getFetchConfig("DELETE")
+      );
+
+      return parseApiResponse(
+        response,
+        "Failed to delete exam"
+      );
     }
-    logger.debug('Deleting exam', { examId: id });
-    await delay(500);
-    const index = mockDb.exams.findIndex(e => e.id === id);
-    if (index === -1) {
-      logger.error('Delete failed: Exam not found', { examId: id });
-      throw new Error('Exam not found');
-    }
-    mockDb.exams.splice(index, 1);
-    logger.info('Exam deleted successfully', { examId: id });
-    return { success: true };
+
+    // mock implementation...
   },
 
   publishExam: async (id) => {
     if (!API_CONFIG.useMock) {
       const response = await fetch(
-        `${API_CONFIG.baseUrl}/exams/${encodeURIComponent(id)}`,
+        `${API_CONFIG.baseUrl}/exams/${encodeURIComponent(
+          id
+        )}`,
         getFetchConfig("PUT", {
           published: true,
         })
       );
 
-      const body = await response
-        .json()
-        .catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(
-          body?.message ||
-          body?.error ||
-          "Failed to publish exam"
-        );
-      }
-
-      return body;
+      return parseApiResponse(
+        response,
+        "Failed to publish exam"
+      );
     }
 
     const exam = mockDb.exams.find(
@@ -230,18 +298,30 @@ export const examService = {
     return exam;
   },
 
-  submitScore: async (scoreData) => {
+  submitScore: async ({
+    examId,
+    answers,
+  }) => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/exams/submit`, getFetchConfig('POST', scoreData));
-      if (!response.ok) throw new Error('Failed to submit score');
-      return await response.json();
+      const response = await fetch(
+        `${API_CONFIG.baseUrl}/exams/submit`,
+        getFetchConfig("POST", {
+          examId,
+          answers,
+        })
+      );
+
+      return parseApiResponse(
+        response,
+        "Failed to submit exam"
+      );
     }
-    logger.debug('Submitting exam score', { examId: scoreData.examId, studentName: scoreData.studentName });
-    await delay(500);
-    mockDb.studentScores.push(scoreData);
-    logger.info('Score submitted successfully', { examId: scoreData.examId, studentName: scoreData.studentName, score: scoreData.score });
-    return { success: true };
+
+    throw new Error(
+      "Secure server-side grading is unavailable in mock mode."
+    );
   },
+
   // מחזירה את כל ההגשוש
   getAllSubmissions: async () => {
     if (!API_CONFIG.useMock) {
@@ -254,38 +334,45 @@ export const examService = {
   },
 
   // פונקציה אסינכרונית לעדכון משוב ההגשה
-  updateSubmissionFeedback: async (submissionId, feedback, questionFeedback, isFeedbackVisible, score) => {
-    if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/exams/submissions/${submissionId}`, getFetchConfig('PUT', { feedback, questionFeedback, isFeedbackVisible, score }));
-      if (!response.ok) throw new Error('Failed to update submission feedback');
-      return await response.json();
-    }
-    logger.debug('Updating submission feedback', { submissionId });
-    await delay(500);
-    const index = mockDb.studentScores.findIndex(s => s.id === submissionId);
-    if (index === -1) {
-      logger.error('Feedback update failed: Submission not found', { submissionId });
-      throw new Error('Submission not found');
-    }
-    mockDb.studentScores[index] = { 
-      ...mockDb.studentScores[index], 
-      feedback, 
-      questionFeedback,
-      isFeedbackVisible,
-      score: score !== undefined ? score : mockDb.studentScores[index].score
-    };
-    logger.info('Submission feedback updated successfully', { submissionId, isFeedbackVisible, score });
-    return mockDb.studentScores[index];
+  updateSubmissionFeedback: async (
+    submissionId,
+    feedback,
+    questionFeedback,
+    isFeedbackVisible
+  ) => {
+    const response = await fetch(
+      `${API_CONFIG.baseUrl}/exams/submissions/${encodeURIComponent(
+        submissionId
+      )}`,
+      getFetchConfig("PUT", {
+        feedback,
+        questionFeedback,
+        isFeedbackVisible,
+      })
+    );
+
+    return parseApiResponse(
+      response,
+      "Failed to update submission feedback"
+    );
   },
 
   // פונקציה אסינכרונית שמחזירה את ההגשות של הסטודנט
-  getSubmissionsByStudent: async (studentName) => {
+  getMySubmissions: async () => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/exams/submissions/student/${encodeURIComponent(studentName)}`, getFetchConfig());
-      return await parseApiResponse( response.json(),
-      "Failed to fetch student submissions");
+      const response = await fetch(
+        `${API_CONFIG.baseUrl}/exams/my-submissions`,
+        getFetchConfig()
+      );
+
+      return parseApiResponse(
+        response,
+        "Failed to fetch student submissions"
+      );
     }
+
     await delay(500);
-    return mockDb.studentScores.filter(s => s.studentName === studentName);
-  }
+
+    return [...mockDb.studentScores];
+  },
 };

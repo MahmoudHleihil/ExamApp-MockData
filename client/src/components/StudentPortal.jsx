@@ -57,7 +57,7 @@ const StudentPortal = ({ user }) => {
     setSelectedFeedback(submission);
     setShowFullReview(false);
     try {
-      const examData = await examService.getExamById(submission.examId);
+      const examData = await examService.getExamForStudent(submission.examId);
       setFeedbackExam(examData);
       navigate(`/student/feedback/${submission.id}`);
     } catch (err) {
@@ -78,7 +78,7 @@ const StudentPortal = ({ user }) => {
     setEnteredPassword('');
     setPasswordError('');
     try {
-      const data = await examService.getExamById(examId);
+      const data = await examService.getExamForStudent(examId);
       
       // Check if the exam is currently available or within early access
       if (!data.isAlwaysAvailable) {
@@ -141,75 +141,99 @@ const StudentPortal = ({ user }) => {
 
   // פונקציית הגשת המבחן.
   const handleSubmitExam = async () => {
-    // Calculate score automatically
-    let totalPoints = 0;
-    let earnedPoints = 0;
-    
-    exam.questions.forEach(q => {
-      const points = q.points || 0;
-      totalPoints += points;
-      
-      const studentAnswer = selectedAnswers[q.id];
-      const correctAnswer = q.correctAnswer;
-      
-      if (q.type === 'multiple-response') {
-        const studentSet = new Set(studentAnswer || []);
-        const correctSet = new Set(correctAnswer || []);
-        if (studentSet.size === correctSet.size && [...studentSet].every(val => correctSet.has(val))) {
-          earnedPoints += points;
-        }
-      } else if (q.type === 'written') {
-        if (studentAnswer?.trim().toLowerCase() === correctAnswer?.trim().toLowerCase()) {
-          earnedPoints += points;
-        }
-      } else {
-        if (studentAnswer === correctAnswer) {
-          earnedPoints += points;
-        }
-      }
-    });
+    if (!exam?.id) {
+      setError("No active exam was found.");
+      return;
+    }
 
-    const calculatedScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
-    const isPassed = calculatedScore >= (exam.passingScore || 60);
-    const releaseImmediately = exam.releaseScoresImmediately !== false; // Default to true if undefined
-
-    // יצירת אובייקט התוצאה.
-    const result = {
-      id: Math.random().toString(36).substr(2, 9),
-      examId: exam.id,
-      examTitle: exam.title,
-      score: calculatedScore,
-      totalPoints,
-      earnedPoints,
-      passingScore: exam.passingScore || 60,
-      isPassed,
-      studentName: studentName,
-      date: new Date().toISOString(),
-      answers: selectedAnswers,
-      feedback: isPassed ? "Congratulations! You passed." : "Keep studying and try again next time.",
-      questionFeedback: {},
-      isFeedbackVisible: releaseImmediately,
-      releaseScoresImmediately: releaseImmediately
-    };
-
-    // הגשת התוצאה.
     try {
-      await examService.submitScore(result);
-      
-      // Notify the teacher about the new submission
+      setError("");
+
+      const response =
+        await examService.submitScore({
+          examId: exam.id,
+          answers: selectedAnswers,
+        });
+
+      const submission =
+        response?.submission ||
+        response?.data ||
+        response;
+
+      const percentage =
+        Number(
+          submission.percentage ??
+            (
+              Number(submission.maxScore) > 0
+                ? (
+                    Number(submission.score) /
+                    Number(submission.maxScore)
+                  ) * 100
+                : 0
+            )
+        );
+
+      const result = {
+        ...submission,
+
+        examId:
+          submission.examId ||
+          exam.id,
+
+        examTitle:
+          submission.examTitle ||
+          exam.title,
+
+        passingScore:
+          exam.passingScore || 60,
+
+        percentage,
+
+        isPassed:
+          percentage >=
+          Number(
+            exam.passingScore || 60
+          ),
+
+        releaseScoresImmediately:
+          Boolean(
+            submission.isScorePublished
+          ),
+
+        feedback:
+          submission.feedback || "",
+      };
+
       notificationService.addNotification({
-        role: 'Teacher',
-        title: 'New Submission',
-        message: `${studentName} submitted their exam: ${exam.title}. Score: ${calculatedScore}%`,
-        type: 'submission'
+        role: "Teacher",
+        title: "New Submission",
+        message:
+          `${studentName} submitted their exam: ${exam.title}.`,
+        type: "submission",
       });
 
       setFinalResult(result);
       setIsSubmitted(true);
       setIsExamStarted(false);
-      navigate(`/student/exams/${exam.id}/result`, { state: { result } });
-    } catch (_) {
-      setError('Failed to submit exam.');
+
+      navigate(
+        `/student/exams/${exam.id}/result`,
+        {
+          state: {
+            result,
+          },
+        }
+      );
+    } catch (error) {
+      console.error(
+        "Failed to submit exam:",
+        error
+      );
+
+      setError(
+        error?.message ||
+        "Failed to submit exam."
+      );
     }
   };
 

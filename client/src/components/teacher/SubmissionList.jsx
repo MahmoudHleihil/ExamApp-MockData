@@ -275,11 +275,27 @@ const SubmissionList = ({ submissions, loading, onBack, onViewDetails }) => {
                       {new Date(submission.date).toLocaleDateString()} {new Date(submission.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </td>
                     <td>
-                      <span 
-                      data-testid="submission-score"
-                      className={`badge rounded-pill px-3 py-2 ${submission.score >= 60 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}`}>
-                        {submission.score.toFixed(0)}%
-                      </span>
+                      {(() => {
+                        const percentage =
+                          Number.isFinite(Number(submission.percentage))
+                            ? Number(submission.percentage)
+                            : submission.maxScore > 0
+                              ? (Number(submission.score) / Number(submission.maxScore)) * 100
+                              : 0;
+
+                        return (
+                          <span
+                            data-testid="submission-score"
+                            className={`badge rounded-pill px-3 py-2 ${
+                              percentage >= 60
+                                ? "bg-success-subtle text-success"
+                                : "bg-danger-subtle text-danger"
+                            }`}
+                          >
+                            {percentage.toFixed(0)}%
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="text-end pe-4">
                       <div className="btn-group">
@@ -290,7 +306,8 @@ const SubmissionList = ({ submissions, loading, onBack, onViewDetails }) => {
                         >
                           <i className={`bi bi-pin${isPinned ? '-fill' : ''}`}></i>
                         </button>
-                        <button className="btn btn-sm btn-outline-primary" data-testid="submission-view-button" onClick={() => onViewDetails(submission)}>
+                        <button className="btn btn-sm btn-outline-primary" data-testid="submission-view-button" onClick={() => {
+                          console.log(submission);onViewDetails(submission)}}>
                           View Details
                         </button>
                       </div>

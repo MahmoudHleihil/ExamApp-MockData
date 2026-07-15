@@ -41,6 +41,274 @@ class ExamService {
     return exam;
     }
 
+    async getExamForStudent(
+    examId,
+    user
+    ) {
+    const exam =
+        await ExamRepository.findById(
+        examId
+        );
+
+    if (!exam) {
+        const error =
+        new Error("Exam not found");
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (
+        !exam.published &&
+        !exam.isPublished
+    ) {
+        const error =
+        new Error(
+            "Exam is not published"
+        );
+
+        error.statusCode = 403;
+        throw error;
+    }
+
+    const now = new Date();
+
+    if (!exam.isAlwaysAvailable) {
+    const now = new Date();
+
+    const scheduledDate =
+        new Date(
+        exam.scheduledDate
+        );
+
+    const earlyAccessDate =
+        new Date(
+        scheduledDate.getTime() -
+            (
+            exam.earlyAccessMinutes ||
+            0
+            ) *
+            60_000
+        );
+
+    const expiryDate =
+        new Date(
+        scheduledDate.getTime() +
+            (
+            exam.timeLimit ||
+            60
+            ) *
+            60_000
+        );
+
+    if (now < earlyAccessDate) {
+        const error =
+        new Error(
+            "Exam is not available yet"
+        );
+
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (now > expiryDate) {
+        const error =
+        new Error(
+            "Exam has expired"
+        );
+
+        error.statusCode = 403;
+        throw error;
+    }
+    }
+
+    return {
+        id: exam.id,
+        title: exam.title,
+        description:
+        exam.description,
+        subject: exam.subject,
+        timeLimit:
+        exam.timeLimit,
+        earlyAccessMinutes:
+        exam.earlyAccessMinutes,
+        isAlwaysAvailable:
+        exam.isAlwaysAvailable,
+        scheduledDate:
+        exam.scheduledDate,
+        passingScore:
+        exam.passingScore,
+        passwordRequired:
+        Boolean(
+            exam.passwordHash
+        ),
+
+        questions:
+        exam.questions.map(
+            (question) => ({
+            id: question.id,
+            type: question.type,
+            text:
+                question.text ||
+                question.question,
+            options:
+                question.options,
+            points:
+                question.points,
+            })
+        ),
+    };
+    }
+
+    async submitAnswers(
+    {
+        examId,
+        answers = {},
+    },
+    user
+    ) {
+    const exam =
+        await ExamRepository.findById(
+        examId
+        );
+
+    if (!exam) {
+        const error =
+        new Error("Exam not found");
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (!exam.published) {
+        const error =
+        new Error(
+            "Exam is not published"
+        );
+
+        error.statusCode = 403;
+        throw error;
+    }
+
+    let earnedPoints = 0;
+    let maxScore = 0;
+
+    const gradedAnswers =
+        exam.questions.map(
+        (question) => {
+            const points =
+            Number(
+                question.points
+            ) || 0;
+
+            maxScore += points;
+
+            const studentAnswer =
+            answers[question.id];
+
+            const correctAnswer =
+            question.correctAnswer;
+
+            let isCorrect = false;
+
+            if (
+            question.type ===
+            "multiple-response"
+            ) {
+            const submitted =
+                Array.isArray(
+                studentAnswer
+                )
+                ? studentAnswer
+                : [];
+
+            const expected =
+                Array.isArray(
+                correctAnswer
+                )
+                ? correctAnswer
+                : [];
+
+            isCorrect =
+                submitted.length ===
+                expected.length &&
+                submitted.every(
+                (value) =>
+                    expected.includes(
+                    value
+                    )
+                );
+            } else if (
+            question.type ===
+            "written"
+            ) {
+            isCorrect =
+                typeof studentAnswer ===
+                "string" &&
+                typeof correctAnswer ===
+                "string" &&
+                studentAnswer
+                .trim()
+                .toLowerCase() ===
+                correctAnswer
+                    .trim()
+                    .toLowerCase();
+            } else {
+            isCorrect =
+                studentAnswer ===
+                correctAnswer;
+            }
+
+            const awardedPoints =
+            isCorrect ? points : 0;
+
+            earnedPoints +=
+            awardedPoints;
+
+            return {
+            questionId:
+                question.id,
+            answer:
+                studentAnswer ?? null,
+            isCorrect,
+            awardedPoints,
+            };
+        }
+        );
+
+    const percentage =
+        maxScore > 0
+        ? Math.round(
+            (
+                earnedPoints /
+                maxScore
+            ) *
+                100
+            )
+        : 0;
+
+    return SubmissionRepository.create({
+        examId,
+        studentId: user.id,
+        status:
+        "submitted",
+        score: earnedPoints,
+        maxScore,
+        percentage,
+        submittedAt:
+        new Date(),
+        answers:
+        gradedAnswers,
+        isFeedbackVisible:
+        false,
+        isScorePublished:
+        Boolean(
+            exam
+            .releaseScoresImmediately
+        ),
+    });
+    }
+
     async createExam(examData, user) {
     if (!user?.id) {
         const error = new Error(
@@ -488,7 +756,7 @@ class ExamService {
 
     const submissions =
         await SubmissionRepository
-        .findByStudent(user.id);
+        .findByStudentId(user.id);
 
     return submissions.map(
         (submission) =>
@@ -517,11 +785,9 @@ class ExamService {
     user
     ) {
     if (!user?.id) {
-        const error =
-        new Error(
-            "Authentication required"
+        const error = new Error(
+        "Authentication required"
         );
-
         error.statusCode = 401;
         throw error;
     }
@@ -532,11 +798,9 @@ class ExamService {
         );
 
     if (!submission) {
-        const error =
-        new Error(
-            "Submission not found"
+        const error = new Error(
+        "Submission not found"
         );
-
         error.statusCode = 404;
         throw error;
     }
@@ -549,26 +813,21 @@ class ExamService {
     if (!exam) {
         const error =
         new Error("Exam not found");
-
         error.statusCode = 404;
         throw error;
     }
 
-    const isAdmin =
-        user.role === "Admin";
-
     const isOwner =
-        String(exam.teacherId) ===
-        String(user.id) ||
         String(exam.createdBy) ===
         String(user.id);
 
-    if (!isAdmin && !isOwner) {
-        const error =
-        new Error(
-            "You cannot grade submissions for another teacher's exam."
+    if (
+        user.role !== "Admin" &&
+        !isOwner
+    ) {
+        const error = new Error(
+        "You cannot update feedback for another teacher's exam."
         );
-
         error.statusCode = 403;
         throw error;
     }
@@ -580,24 +839,14 @@ class ExamService {
             updates.feedback ?? "",
 
         questionFeedback:
-            updates.questionFeedback ??
-            {},
+            updates.questionFeedback ?? {},
 
         isFeedbackVisible:
             Boolean(
             updates.isFeedbackVisible
             ),
 
-        score:
-            updates.score !==
-            undefined
-            ? Number(
-                updates.score
-                )
-            : submission.score,
-
-        gradedBy:
-            user.id,
+        gradedBy: user.id,
         }
     );
     }
@@ -789,29 +1038,50 @@ class ExamService {
         throw error;
     }
 
+    const answerDetails = Array.isArray(
+    submission.answerDetails
+    )
+    ? submission.answerDetails
+    : [];
+
+    const gradingAnswers = Array.isArray(
+    gradingData.answers
+    )
+    ? gradingData.answers
+    : [];
+
     const answerUpdates =
-        submission.answerDetails.map(
-        (answer) => {
-            const update =
-            gradingData.answers?.find(
-                (item) =>
-                item.questionId ===
-                answer.questionId
-            );
-
-            return {
-            ...answer,
-
-            awardedPoints:
-                update?.awardedPoints ??
-                answer.awardedPoints,
-
-            feedback:
-                update?.feedback ??
-                answer.feedback,
-            };
-        }
+    answerDetails.map((answer) => {
+        const update =
+        gradingAnswers.find(
+            (item) =>
+            String(item.questionId) ===
+            String(answer.questionId)
         );
+
+        return {
+        questionId:
+            answer.questionId,
+
+        answer:
+            answer.answer ?? null,
+
+        isCorrect:
+            update?.isCorrect ??
+            answer.isCorrect ??
+            null,
+
+        awardedPoints:
+            update?.awardedPoints ??
+            answer.awardedPoints ??
+            0,
+
+        feedback:
+            update?.feedback ??
+            answer.feedback ??
+            "",
+        };
+    });
 
     const score =
         answerUpdates.reduce(
@@ -841,23 +1111,27 @@ class ExamService {
             )
         : 0;
 
-    return SubmissionRepository.update(
-        submissionId,
-        {
-        answers: answerUpdates,
-        score,
-        maxScore,
-        percentage,
-        feedback:
-            gradingData.feedback ??
-            submission.feedback,
+        return await SubmissionRepository.updateGrade(
+            submissionId,
+            {
+                score,
+                maxScore,
+                percentage,
 
-        status: "graded",
-        gradedBy: user.id,
-        gradedAt:
-            new Date().toISOString(),
-        }
-    );
+                feedback:
+                    gradingData.feedback || "",
+
+                isFeedbackVisible:
+                    Boolean(gradingData.isFeedbackVisible),
+
+                isScorePublished:
+                    Boolean(gradingData.isScorePublished),
+
+                gradedBy: user.id,
+
+                answers: answerUpdates,
+            }
+        );
     }
 
     async publishSubmissionScore(
