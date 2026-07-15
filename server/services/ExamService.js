@@ -1212,6 +1212,191 @@ class ExamService {
         exam.sourceDocumentTitle,
     };
     }
+
+    async getStudentSubmissionReview(
+    submissionId,
+    user
+    ) {
+    if (!user?.id) {
+        const error =
+        new Error(
+            "Authentication required"
+        );
+
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const submission =
+        await SubmissionRepository.findById(
+        submissionId
+        );
+
+    if (!submission) {
+        const error =
+        new Error(
+            "Submission not found"
+        );
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (
+        String(submission.studentId) !==
+        String(user.id)
+    ) {
+        const error =
+        new Error(
+            "You cannot access another student's submission."
+        );
+
+        error.statusCode = 403;
+        throw error;
+    }
+
+    const exam =
+        await ExamRepository.findById(
+        submission.examId
+        );
+
+    if (!exam) {
+        const error =
+        new Error("Exam not found");
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const questionsById =
+        new Map(
+        exam.questions.map(
+            (question) => [
+            String(question.id),
+            question,
+            ]
+        )
+        );
+
+    const answerDetails =
+        Array.isArray(
+        submission.answerDetails
+        )
+        ? submission.answerDetails
+        : [];
+
+    const questions =
+        answerDetails.map(
+        (answer) => {
+            const question =
+            questionsById.get(
+                String(
+                answer.questionId
+                )
+            );
+
+            return {
+            questionId:
+                answer.questionId,
+
+            text:
+                question?.text ||
+                question?.question ||
+                "",
+
+            type:
+                question?.type ||
+                null,
+
+            options:
+                question?.options ||
+                [],
+
+            points:
+                Number(
+                question?.points ||
+                0
+                ),
+
+            studentAnswer:
+                answer.answer,
+
+            awardedPoints:
+                answer.awardedPoints ===
+                null
+                ? null
+                : Number(
+                    answer.awardedPoints
+                    ),
+
+            isCorrect:
+                submission.isFeedbackVisible
+                ? answer.isCorrect
+                : undefined,
+
+            feedback:
+                submission.isFeedbackVisible
+                ? answer.feedback || ""
+                : "",
+            };
+        }
+        );
+
+    return {
+        id: submission.id,
+        examId: submission.examId,
+        examTitle:
+        submission.examTitle ||
+        exam.title,
+
+        status:
+        submission.status,
+
+        score:
+        submission.isScorePublished
+            ? Number(
+                submission.score
+            )
+            : null,
+
+        maxScore:
+        Number(
+            submission.maxScore ||
+            0
+        ),
+
+        percentage:
+        submission.isScorePublished
+            ? Number(
+                submission.percentage
+            )
+            : null,
+
+        feedback:
+        submission.isFeedbackVisible
+            ? submission.feedback ||
+            ""
+            : "",
+
+        isFeedbackVisible:
+        Boolean(
+            submission.isFeedbackVisible
+        ),
+
+        isScorePublished:
+        Boolean(
+            submission.isScorePublished
+        ),
+
+        submittedAt:
+        submission.submittedAt,
+
+        gradedAt:
+        submission.gradedAt,
+
+        questions,
+    };
+    }
 }
 
 export default new ExamService();

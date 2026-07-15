@@ -25,6 +25,7 @@
     "test:conversations": "node --test tests/conversationCrud.test.js",
     "test:submission-permissions": "node --test tests/submissionPermissions.test.js",
     "test:student-exam-security": "node --test tests/studentExamSecurity.test.js",
+    "test:student-review": "node --test tests/studentSubmissionReview.test.js",
     "test:integration": "node --test tests/*.test.js",
     "init-db": "node scripts/initDb.js",
     "seed-db": "node scripts/seedDb.js",

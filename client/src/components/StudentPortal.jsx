@@ -37,11 +37,41 @@ const StudentPortal = ({ user }) => {
 
   const fetchStudentSubmissions = async () => {
     setFeedbackLoading(true);
+
     try {
-      const data = await examService.getSubmissionsByStudent(studentName);
-      setStudentSubmissions(data);
-    } catch (err) {
-      console.error("Failed to fetch submissions:", err);
+      const response =
+        await examService.getMySubmissions();
+console.log(
+  "Student submissions response:",
+  JSON.stringify(
+    response,
+    null,
+    2
+  )
+);
+      const submissions =
+        Array.isArray(response)
+          ? response
+          : Array.isArray(
+              response?.submissions
+            )
+            ? response.submissions
+            : Array.isArray(
+                response?.data
+              )
+              ? response.data
+              : [];
+
+      setStudentSubmissions(
+        submissions
+      );
+    } catch (error) {
+      console.error(
+        "Failed to fetch submissions:",
+        error
+      );
+
+      setStudentSubmissions([]);
     } finally {
       setFeedbackLoading(false);
     }
@@ -52,16 +82,35 @@ const StudentPortal = ({ user }) => {
   }, []);
 
   // פונקציה אסינכרונית לטעינת המשוב
-  const handleViewFeedback = async (submission) => {
+  const handleViewFeedback = async (
+    submission
+  ) => {
     setFeedbackLoading(true);
-    setSelectedFeedback(submission);
     setShowFullReview(false);
+
     try {
-      const examData = await examService.getExamForStudent(submission.examId);
-      setFeedbackExam(examData);
-      navigate(`/student/feedback/${submission.id}`);
-    } catch (err) {
-      console.error("Failed to fetch exam for feedback:", err);
+      const review =
+        await examService
+          .getStudentSubmissionReview(
+            submission.id
+          );
+
+      setSelectedFeedback(review);
+      setFeedbackExam(review);
+
+      navigate(
+        `/student/feedback/${submission.id}`
+      );
+    } catch (error) {
+      console.error(
+        "Failed to load submission review:",
+        error
+      );
+
+      setError(
+        error?.message ||
+        "Failed to load submission review."
+      );
     } finally {
       setFeedbackLoading(false);
     }

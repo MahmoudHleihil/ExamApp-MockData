@@ -365,14 +365,55 @@ export const examService = {
         getFetchConfig()
       );
 
-      return parseApiResponse(
-        response,
-        "Failed to fetch student submissions"
-      );
+      const body =
+        await parseApiResponse(
+          response,
+          "Failed to fetch student submissions"
+        );
+
+      return Array.isArray(body)
+        ? body
+        : Array.isArray(
+            body?.submissions
+          )
+          ? body.submissions
+          : Array.isArray(
+              body?.data
+            )
+            ? body.data
+            : [];
     }
 
     await delay(500);
 
     return [...mockDb.studentScores];
+  },
+
+  getStudentSubmissionReview: async (submissionId) => {
+      if (!API_CONFIG.useMock) {
+        const response =
+          await fetch(
+            `${API_CONFIG.baseUrl}/exams/my-submissions/${encodeURIComponent(
+              submissionId
+            )}/review`,
+            getFetchConfig()
+          );
+
+        const body =
+          await parseApiResponse(
+            response,
+            "Failed to load submission review"
+          );
+
+        return (
+          body?.review ||
+          body?.data ||
+          body
+        );
+      }
+
+      throw new Error(
+        "Submission review is unavailable in mock mode."
+      );
   },
 };

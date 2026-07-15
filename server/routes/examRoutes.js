@@ -127,6 +127,12 @@ router.put(
 | Your current teacher frontend requests GET /api/exams/:id.
 | Restrict this endpoint so students cannot receive correct answers.
 */
+router.get(
+  "/my-submissions/:submissionId/review",
+  authenticate,
+  authorize("Student"),
+  ExamController.getStudentSubmissionReview
+);
 
 router.get(
   "/:id",

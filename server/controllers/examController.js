@@ -252,3 +252,21 @@ export const updateSubmissionFeedback = async (
         next(err);
     }
 };
+
+export const getStudentSubmissionReview =
+  async (req, res, next) => {
+    try {
+      const review =
+        await ExamService.getStudentSubmissionReview(
+          req.params.submissionId,
+          req.user
+        );
+
+      res.json({
+        success: true,
+        review,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
