@@ -12,7 +12,8 @@ const ExamSearch = ({
   setEnteredPassword, 
   passwordError, 
   setPasswordError, 
-  startTakingExam 
+  startTakingExam,
+  alreadySubmitted
 }) => {
   const [now, setNow] = useState(new Date());
 
@@ -95,6 +96,15 @@ const ExamSearch = ({
                 )}
                 <span><i className="bi bi-award me-1"></i> {exam.passingScore}% to Pass</span>
               </div>
+              {alreadySubmitted && (
+              <div
+                className="alert alert-warning"
+                data-testid="student-already-submitted"
+              >
+                You have already submitted this exam.
+                You cannot submit it again.
+              </div>
+            )}
               
               {/* הזנת סיסמת הבחינה אם יש */}
               {exam.passwordRequired && (
@@ -143,7 +153,8 @@ const ExamSearch = ({
                 onClick={startTakingExam}
                 disabled={
                   isBeforeStart ||
-                  loading
+                  loading ||
+                  alreadySubmitted
                 }
                 data-testid="student-start-exam"
               >

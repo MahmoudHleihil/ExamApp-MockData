@@ -1146,6 +1146,29 @@ class SubmissionRepository {
     );
   }
 
+  async findByStudentAndExam(
+    studentId,
+    examId
+  ) {
+    const result =
+      await pool.query(
+        `
+          SELECT id
+          FROM exam_submissions
+          WHERE
+            student_id = $1
+            AND exam_id = $2
+          LIMIT 1
+        `,
+        [
+          studentId,
+          examId,
+        ]
+      );
+
+    return result.rows[0] || null;
+  }
+
   async add(data) {
     return this.create(data);
   }

@@ -399,3 +399,100 @@ test.describe(
     );
   }
 );
+
+test(
+  "too many password attempts are rate limited",
+  async () => {
+    const teacherApi =
+      await createApiContext(
+        "playwright/.auth/teacher.json"
+      );
+
+    const studentApi =
+      await createApiContext(
+        "playwright/.auth/student.json"
+      );
+
+    const examTitle =
+      `Rate Limited Exam ${Date.now()}`;
+
+    const password =
+      "SecureExam123!";
+
+    let examId = null;
+
+    try {
+      const exam =
+        await createProtectedExam(
+          teacherApi,
+          studentApi,
+          examTitle,
+          password
+        );
+
+      examId = exam.id;
+
+      for (
+        let attempt = 1;
+        attempt <= 8;
+        attempt += 1
+      ) {
+        const response =
+          await studentApi.post(
+            `/api/exams/take/${encodeURIComponent(
+              examId
+            )}/verify-password`,
+            {
+              data: {
+                password:
+                  "WrongPassword",
+              },
+            }
+          );
+
+        expect(
+          response.status(),
+          `Attempt ${attempt} should return 403 before reaching the limit.`
+        ).toBe(403);
+      }
+
+      const limitedResponse =
+        await studentApi.post(
+          `/api/exams/take/${encodeURIComponent(
+            examId
+          )}/verify-password`,
+          {
+            data: {
+              password:
+                "WrongPassword",
+            },
+          }
+        );
+
+      const limitedBody =
+        await limitedResponse
+          .json()
+          .catch(() => null);
+
+      expect(
+        limitedResponse.status()
+      ).toBe(429);
+
+      expect(
+        limitedBody?.message
+      ).toMatch(
+        /too many.*attempts/i
+      );
+    } finally {
+      if (examId) {
+        await deleteExam(
+          teacherApi,
+          examId
+        );
+      }
+
+      await studentApi.dispose();
+      await teacherApi.dispose();
+    }
+  }
+);

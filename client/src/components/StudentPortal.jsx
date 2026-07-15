@@ -25,6 +25,10 @@ const StudentPortal = ({ user }) => {
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [finalResult, setFinalResult] = useState(null);
+  const [
+    alreadySubmitted,
+    setAlreadySubmitted,
+  ] = useState(false);
 
   // Feedback state
   const [studentSubmissions, setStudentSubmissions] = useState([]);
@@ -41,14 +45,14 @@ const StudentPortal = ({ user }) => {
     try {
       const response =
         await examService.getMySubmissions();
-console.log(
-  "Student submissions response:",
-  JSON.stringify(
-    response,
-    null,
-    2
-  )
-);
+        console.log(
+          "Student submissions response:",
+          JSON.stringify(
+            response,
+            null,
+            2
+          )
+        );
       const submissions =
         Array.isArray(response)
           ? response
@@ -129,6 +133,19 @@ console.log(
     try {
       const data = await examService.getExamForStudent(examId);
       
+      const existingSubmission =
+        studentSubmissions.find(
+          (submission) =>
+            String(submission.examId) ===
+            String(data.id)
+        );
+
+      if (existingSubmission) {
+        setAlreadySubmitted(true);
+      } else {
+        setAlreadySubmitted(false);
+      }
+
       // Check if the exam is currently available or within early access
       if (!data.isAlwaysAvailable) {
         const now = new Date();
@@ -363,6 +380,7 @@ console.log(
                 passwordError={passwordError}
                 setPasswordError={setPasswordError}
                 startTakingExam={startTakingExam}
+                alreadySubmitted={alreadySubmitted}
               />
             </div>
           </div>

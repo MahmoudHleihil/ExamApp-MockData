@@ -7,6 +7,10 @@ import {
 } from "../middleware/authMiddleware.js";
 
 import {
+  examPasswordLimiter,
+} from "../middleware/examPasswordLimiter.js";
+
+import {
   examValidation,
 } from "../middleware/validationMiddleware.js";
 
@@ -82,6 +86,7 @@ router.post(
   "/take/:id/verify-password",
   authenticate,
   authorize("Student"),
+  examPasswordLimiter,
   ExamController.verifyExamPassword
 );
 

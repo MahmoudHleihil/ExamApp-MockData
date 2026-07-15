@@ -198,146 +198,175 @@ class ExamService {
     },
     user
     ) {
-    const exam =
-        await ExamRepository.findById(
-        examId
-        );
+        const exam =
+            await ExamRepository.findById(
+            examId
+            );
 
-    if (!exam) {
-        const error =
-        new Error("Exam not found");
+        if (!exam) {
+            const error =
+            new Error("Exam not found");
 
-        error.statusCode = 404;
-        throw error;
-    }
-
-    if (!exam.published) {
-        const error =
-        new Error(
-            "Exam is not published"
-        );
-
-        error.statusCode = 403;
-        throw error;
-    }
-
-    let earnedPoints = 0;
-    let maxScore = 0;
-
-    const gradedAnswers =
-        exam.questions.map(
-        (question) => {
-            const points =
-            Number(
-                question.points
-            ) || 0;
-
-            maxScore += points;
-
-            const studentAnswer =
-            answers[question.id];
-
-            const correctAnswer =
-            question.correctAnswer;
-
-            let isCorrect = false;
-
-            if (
-            question.type ===
-            "multiple-response"
-            ) {
-            const submitted =
-                Array.isArray(
-                studentAnswer
-                )
-                ? studentAnswer
-                : [];
-
-            const expected =
-                Array.isArray(
-                correctAnswer
-                )
-                ? correctAnswer
-                : [];
-
-            isCorrect =
-                submitted.length ===
-                expected.length &&
-                submitted.every(
-                (value) =>
-                    expected.includes(
-                    value
-                    )
-                );
-            } else if (
-            question.type ===
-            "written"
-            ) {
-            isCorrect =
-                typeof studentAnswer ===
-                "string" &&
-                typeof correctAnswer ===
-                "string" &&
-                studentAnswer
-                .trim()
-                .toLowerCase() ===
-                correctAnswer
-                    .trim()
-                    .toLowerCase();
-            } else {
-            isCorrect =
-                studentAnswer ===
-                correctAnswer;
-            }
-
-            const awardedPoints =
-            isCorrect ? points : 0;
-
-            earnedPoints +=
-            awardedPoints;
-
-            return {
-            questionId:
-                question.id,
-            answer:
-                studentAnswer ?? null,
-            isCorrect,
-            awardedPoints,
-            };
+            error.statusCode = 404;
+            throw error;
         }
+
+        if (!exam.published) {
+            const error =
+            new Error(
+                "Exam is not published"
+            );
+
+            error.statusCode = 403;
+            throw error;
+        }
+
+        const existingSubmission =
+        await SubmissionRepository
+            .findByStudentAndExam(
+            user.id,
+            examId
+            );
+
+        if (existingSubmission) {
+        const error = new Error(
+            "You have already submitted this exam."
         );
 
-    const percentage =
-        maxScore > 0
-        ? Math.round(
-            (
-                earnedPoints /
-                maxScore
-            ) *
-                100
-            )
-        : 0;
+        error.statusCode = 409;
+        throw error;
+        }
 
-    return SubmissionRepository.create({
-        examId,
-        studentId: user.id,
-        status:
-        "submitted",
-        score: earnedPoints,
-        maxScore,
-        percentage,
-        submittedAt:
-        new Date(),
-        answers:
-        gradedAnswers,
-        isFeedbackVisible:
-        false,
-        isScorePublished:
-        Boolean(
-            exam
-            .releaseScoresImmediately
-        ),
-    });
+        let earnedPoints = 0;
+        let maxScore = 0;
+
+        const gradedAnswers =
+            exam.questions.map(
+            (question) => {
+                const points =
+                Number(
+                    question.points
+                ) || 0;
+
+                maxScore += points;
+
+                const studentAnswer =
+                answers[question.id];
+
+                const correctAnswer =
+                question.correctAnswer;
+
+                let isCorrect = false;
+
+                if (
+                question.type ===
+                "multiple-response"
+                ) {
+                const submitted =
+                    Array.isArray(
+                    studentAnswer
+                    )
+                    ? studentAnswer
+                    : [];
+
+                const expected =
+                    Array.isArray(
+                    correctAnswer
+                    )
+                    ? correctAnswer
+                    : [];
+
+                isCorrect =
+                    submitted.length ===
+                    expected.length &&
+                    submitted.every(
+                    (value) =>
+                        expected.includes(
+                        value
+                        )
+                    );
+                } else if (
+                question.type ===
+                "written"
+                ) {
+                isCorrect =
+                    typeof studentAnswer ===
+                    "string" &&
+                    typeof correctAnswer ===
+                    "string" &&
+                    studentAnswer
+                    .trim()
+                    .toLowerCase() ===
+                    correctAnswer
+                        .trim()
+                        .toLowerCase();
+                } else {
+                isCorrect =
+                    studentAnswer ===
+                    correctAnswer;
+                }
+
+                const awardedPoints =
+                isCorrect ? points : 0;
+
+                earnedPoints +=
+                awardedPoints;
+
+                return {
+                questionId:
+                    question.id,
+                answer:
+                    studentAnswer ?? null,
+                isCorrect,
+                awardedPoints,
+                };
+            }
+            );
+
+        const percentage =
+            maxScore > 0
+            ? Math.round(
+                (
+                    earnedPoints /
+                    maxScore
+                ) *
+                    100
+                )
+            : 0;
+
+        try {
+            return SubmissionRepository.create({
+                examId,
+                studentId: user.id,
+                status:
+                "submitted",
+                score: earnedPoints,
+                maxScore,
+                percentage,
+                submittedAt:
+                new Date(),
+                answers:
+                gradedAnswers,
+                isFeedbackVisible:
+                false,
+                isScorePublished:
+                Boolean(
+                    exam
+                    .releaseScoresImmediately
+                ),
+            });
+        } catch (error) {
+            if (error?.code === "23505") {
+                const conflict =
+                new Error(
+                    "You have already submitted this exam."
+                );
+
+                conflict.statusCode = 409;
+                throw conflict;
+            }
+        }
+        throw error;
     }
 
     async createExam(examData, user) {
@@ -1549,6 +1578,14 @@ class ExamService {
             );
 
         if (!matches) {
+            console.warn(
+            "Incorrect exam password attempt",
+            {
+                examId,
+                studentId: user.id,
+            }
+            );
+            
             const error = new Error(
             "Incorrect exam password"
             );
