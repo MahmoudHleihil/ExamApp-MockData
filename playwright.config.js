@@ -119,6 +119,7 @@ export default defineConfig({
         ...process.env,
         NODE_ENV: "test",
         FRONTEND_URL: frontendUrl,
+        E2E_FAKE_AI_GRADING: "true",
       },
     },
     {

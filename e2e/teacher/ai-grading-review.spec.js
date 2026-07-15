@@ -314,38 +314,6 @@ test.describe(
               exam
             );
 
-          await seedAiSuggestion(
-            teacherApi,
-            submission.id,
-            questionId
-          );
-page.on(
-  "response",
-  async (response) => {
-    const url =
-      new URL(response.url());
-
-    if (
-      response.ok() &&
-      url.pathname ===
-        "/api/exams/submissions"
-    ) {
-      const body =
-        await response
-          .json()
-          .catch(() => null);
-
-      console.log(
-        "Teacher submissions response:",
-        JSON.stringify(
-          body,
-          null,
-          2
-        )
-      );
-    }
-  }
-);
           await page.goto(
             "/#/teacher/submissions"
           );
@@ -383,15 +351,7 @@ page.on(
               "submission-view-button"
             )
             .click();
-const detailText =
-  await page
-    .getByTestId("submission-detail")
-    .textContent();
 
-console.log(
-  "Submission detail text:",
-  detailText
-);
           await expect(
             page.getByTestId(
               "submission-detail"

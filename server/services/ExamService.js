@@ -2,6 +2,9 @@ import ExamRepository from "../repositories/ExamRepository.js";
 import SubmissionRepository from "../repositories/SubmissionRepository.js";
 import { mockDb } from "../data/mockDb.js";
 import NotificationService from "./NotificationService.js";
+import {
+  getAiGradingService,
+} from "./createAiGradingService.js";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 
@@ -200,9 +203,12 @@ class ExamService {
     dependencies = {}
     ) {
     const aiGradingService =
-        dependencies.aiGradingService ||
-        this.aiGradingService ||
-        null;
+        Object.prototype.hasOwnProperty.call(
+        dependencies,
+        "aiGradingService"
+        )
+        ? dependencies.aiGradingService
+        : getAiGradingService();
 
     const exam =
         await ExamRepository.findById(
@@ -464,6 +470,38 @@ class ExamService {
                 question.id
             ];
 
+            const normalizedStudentAnswer =
+            String(
+                studentAnswer ??
+                ""
+            ).trim();
+
+            if (!normalizedStudentAnswer) {
+            await SubmissionRepository
+                .updateAiGradingSuggestion(
+                createdSubmission.id,
+                question.id,
+                {
+                    status:
+                    "ai-suggestion-ready",
+
+                    awardedPoints: 0,
+                    confidence: 1,
+
+                    feedback:
+                    "No answer was provided.",
+
+                    strengths: [],
+
+                    missingConcepts: [
+                    "A written response was not provided.",
+                    ],
+                }
+                );
+
+            continue;
+            }
+
             const suggestion =
             await aiGradingService
                 .gradeWrittenAnswer({
@@ -483,10 +521,7 @@ class ExamService {
                     "",
 
                 studentAnswer:
-                    String(
-                    studentAnswer ??
-                    ""
-                    ),
+                    normalizedStudentAnswer,
 
                 maxPoints:
                     Number(
@@ -494,11 +529,28 @@ class ExamService {
                     ) || 0,
                 });
 
+                const allowedStatuses =
+                new Set([
+                    "ai-suggestion-ready",
+                    "ai-grading-failed",
+                ]);
+
+                const normalizedSuggestion = {
+                ...suggestion,
+
+                status:
+                    allowedStatuses.has(
+                    suggestion?.status
+                    )
+                    ? suggestion.status
+                    : "ai-suggestion-ready",
+                };
+
             await SubmissionRepository
             .updateAiGradingSuggestion(
                 createdSubmission.id,
                 question.id,
-                suggestion
+                normalizedSuggestion
             );
         } catch (
             gradingError

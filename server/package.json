@@ -33,6 +33,7 @@
     "test:ai-grading-persistence": "node --test tests/aiGradingPersistence.test.js",
     "test:written-ai-submission": "node --test tests/writtenAnswerAiSubmission.test.js",
     "test:ai-grading-review": "node --test tests/aiGradingReview.test.js",
+    "test:ai-grading-factory": "node --test tests/aiGradingFactory.test.js",
     "test:integration": "node --test tests/*.test.js",
     "init-db": "node scripts/initDb.js",
     "seed-db": "node scripts/seedDb.js",
