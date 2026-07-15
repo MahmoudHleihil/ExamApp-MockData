@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon --config nodemon.json server.js",
+    "start:e2e": "node server.js",
     "test-db": "node scripts/testDbConnection.js",
     "db:migrate": "node database/migrate.js",
     "db:seed-users": "node scripts/seedUsers.js",
@@ -23,6 +24,10 @@
     "test:ci": "npm run db:migrate:test && npm run test:mcp-confirmations",
     "test:conversations": "node --test tests/conversationCrud.test.js",
     "test:submission-permissions": "node --test tests/submissionPermissions.test.js",
+    "test:student-exam-security": "node --test tests/studentExamSecurity.test.js",
+    "test:student-review": "node --test tests/studentSubmissionReview.test.js",
+    "test:exam-password": "node --test tests/examPasswordSecurity.test.js",
+    "test:duplicate-submission": "node --test tests/duplicateSubmission.test.js",
     "test:integration": "node --test tests/*.test.js",
     "init-db": "node scripts/initDb.js",
     "seed-db": "node scripts/seedDb.js",

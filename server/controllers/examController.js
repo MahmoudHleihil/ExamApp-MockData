@@ -11,16 +11,62 @@ export const getAllExams = async (req, res, next) => {
     }
 };
 
-export const getExamById = async (req, res, next) => {
+export const getExamById =
+  async (req, res, next) => {
     try {
+      const exam =
+        await ExamService.getExam(
+          req.params.id,
+          req.user
+        );
 
-        const exam = await ExamService.getExam(req.params.id);
-
-        res.status(200).json(exam);
-
-    } catch (err) {
-        next(err);
+      res.json(exam);
+    } catch (error) {
+      next(error);
     }
+  };
+
+export const getExamForStudent = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const exam =
+      await ExamService.getExamForStudent(
+        req.params.id,
+        req.user
+      );
+
+    res.json(exam);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAvailableExams = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const exams =
+      await ExamService.getUserExams(
+        req.user
+      );
+
+    const sanitized =
+      exams.map((exam) =>
+        ExamService.sanitizeExamForUser(
+          exam,
+          req.user
+        )
+      );
+
+    res.json(sanitized);
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const createExam = async (req, res, next) => {
@@ -87,19 +133,57 @@ export const deleteExam = async (req, res, next) => {
     }
 };
 
-export const submitScore = async (req, res, next) => {
-    try {
+export const submitAnswers = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const submission =
+      await ExamService.submitAnswers(
+        {
+          examId:
+            req.body.examId,
+          answers:
+            req.body.answers,
+        },
+        req.user
+      );
 
-        const result = await ExamService.submitScore(
-            req.body,
-            req.user
-        );
+    res.status(201).json(
+      submission
+    );
+  } catch (error) {
+    next(error);
+  }
+};
 
-        res.json(result);
+export const submitScore = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const submission =
+      await ExamService.submitAnswers(
+        {
+          examId:
+            req.body.examId,
 
-    } catch (err) {
-        next(err);
-    }
+          answers:
+            req.body.answers ||
+            {},
+        },
+        req.user
+      );
+
+    res.status(201).json({
+      success: true,
+      submission,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const getAllSubmissions = async (req, res, next) => {
@@ -115,7 +199,7 @@ export const getAllSubmissions = async (req, res, next) => {
     }
 };
 
-    export const getSubmissionsByStudent = async (req, res, next) => {
+export const getSubmissionsByStudent = async (req, res, next) => {
         try {
             const submissions = await ExamService.getSubmissionsByStudent(
             req.params.studentName,
@@ -128,18 +212,20 @@ export const getAllSubmissions = async (req, res, next) => {
         }
     };
 
-export const getStudentSubmissions = async (req, res, next) => {
+export const getStudentSubmissions =
+  async (req, res, next) => {
     try {
+      const submissions =
+        await ExamService
+          .getStudentSubmissions(
+            req.user
+          );
 
-        const submissions =
-            await ExamService.getStudentSubmissions(req.user);
-
-        res.json(submissions);
-
-    } catch (err) {
-        next(err);
+      res.json(submissions);
+    } catch (error) {
+      next(error);
     }
-};
+  };
 
 export const updateSubmissionFeedback = async (
     req,
@@ -165,4 +251,41 @@ export const updateSubmissionFeedback = async (
     } catch (err) {
         next(err);
     }
+};
+
+export const getStudentSubmissionReview =
+  async (req, res, next) => {
+    try {
+      const review =
+        await ExamService.getStudentSubmissionReview(
+          req.params.submissionId,
+          req.user
+        );
+
+      res.json({
+        success: true,
+        review,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+export const verifyExamPassword = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const result =
+      await ExamService.verifyExamPassword(
+        req.params.id,
+        req.body.password,
+        req.user
+      );
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
 };

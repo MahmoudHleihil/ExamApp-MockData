@@ -34,6 +34,14 @@ export const AuthProvider = ({ children }) => {
 
     setAuthState({ user });
     
+    localStorage.removeItem(
+      "etest_user"
+    );
+
+    sessionStorage.removeItem(
+      "etest_user"
+    );
+
     const storage = rememberMe ? localStorage : sessionStorage;
     storage.setItem('etest_user', JSON.stringify(user));
   };

@@ -10,22 +10,42 @@ const QUESTION_TYPES = [
 
 // רכיב טופס עריכת מבחנים קיימים או הוספת מבחנים חדשים.
 const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
+  const questions =
+    Array.isArray(
+      formData?.questions
+    )
+      ? formData.questions
+      : [];
+
   // פןנקציית הוספת שאלה חדשה לטופס.
   const handleAddQuestion = () => {
-    // מוסיף שאלה חדשה ריקה לסוף רשימת השאלות ומעדכן את טופס אחר כך.
-    setFormData(prev => ({
-      ...prev,
+    setFormData((previous) => ({
+      ...previous,
+
       questions: [
-        ...prev.questions,
-        { 
-          id: `q${Date.now()}`, 
-          type: 'multiple-choice', 
-          text: '', 
-          options: ['', '', '', ''], 
-          correctAnswer: '',
-          points: 10
-        }
-      ]
+        ...(
+          Array.isArray(
+            previous.questions
+          )
+            ? previous.questions
+            : []
+        ),
+
+        {
+          id: `q${Date.now()}`,
+          type:
+            "multiple-choice",
+          text: "",
+          options: [
+            "",
+            "",
+            "",
+            "",
+          ],
+          correctAnswer: "",
+          points: 10,
+        },
+      ],
     }));
   };
 
@@ -105,7 +125,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
         <button className="btn-close btn-close-white" onClick={onCancel}></button>
       </div>
       <div className="card-body p-4">
-        <form onSubmit={onSave}>
+        <form onSubmit={onSave} data-testid="exam-form">
           <div className="row mb-4">
             <div className="col-md-6">
               <label className="form-label fw-bold">Exam Title</label>
@@ -114,6 +134,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                 className="form-control form-control-lg border-primary border-opacity-25" 
                 value={formData.title} 
                 onChange={(e) => setFormData({...formData, title: e.target.value})}
+                data-testid="exam-title"
                 required 
                 placeholder="e.g., Advanced JavaScript Concepts"
               />
@@ -127,7 +148,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                     type="checkbox" 
                     id="isAlwaysAvailable"
                     checked={formData.isAlwaysAvailable}
-                    onChange={(e) => setFormData({...formData, isAlwaysAvailable: e.target.checked})}
+                    onChange={(e) => setFormData({...formData, isAlwaysAvailable: e.target.checked})} data-testid="exam-always-available"
                   />
                   <label className="form-check-label small fw-bold text-primary" htmlFor="isAlwaysAvailable">
                     Open All The Time
@@ -141,6 +162,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                 onChange={(e) => setFormData({...formData, scheduledDate: new Date(e.target.value).toISOString()})}
                 required={!formData.isAlwaysAvailable}
                 disabled={formData.isAlwaysAvailable}
+                data-testid="exam-scheduled-date"
               />
             </div>
           </div>
@@ -156,6 +178,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                 required 
                 min="1"
                 placeholder="e.g., 60"
+                data-testid="exam-time-limit"
               />
             </div>
             <div className="col-md-4">
@@ -168,6 +191,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                 required 
                 min="0"
                 placeholder="e.g., 30"
+                data-testid="exam-early-access"
               />
               <div className="form-text small">Allow students to enter early.</div>
             </div>
@@ -182,6 +206,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                 min="0"
                 max="100"
                 placeholder="e.g., 60"
+                data-testid="exam-passing-score"
               />
             </div>
           </div>
@@ -195,6 +220,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                 value={formData.password || ''} 
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
                 placeholder="Set a password"
+                data-testid="exam-password"
               />
               <div className="form-text small">Leave blank for no password.</div>
             </div>
@@ -207,6 +233,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                   id="releaseScoresImmediately"
                   checked={formData.releaseScoresImmediately}
                   onChange={(e) => setFormData({...formData, releaseScoresImmediately: e.target.checked})}
+                  data-testid="exam-release-scores"
                 />
                 <label className="form-check-label fw-bold text-primary" htmlFor="releaseScoresImmediately">
                   Release Scores Immediately After Submission
@@ -219,19 +246,19 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
           <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-4">
             <h6 className="fw-bold mb-0 text-primary">
               <i className="bi bi-list-task me-2"></i>
-              Questions ({formData.questions.length})
+              Questions ({questions.length})
             </h6>
           </div>
           
-          {formData.questions.map((q, qIndex) => (
-            <div key={qIndex} className="card mb-4 border-0 bg-light shadow-sm">
+          {questions.map((q, qIndex) => (
+            <div key={qIndex} className="card mb-4 border-0 bg-light shadow-sm" data-testid="question-card">
               <div className="card-header d-flex justify-content-between align-items-center bg-white border-0 py-3">
                 <span className="fw-bold text-secondary">Question {qIndex + 1}</span>
                 <button 
                   type="button" 
                   className="btn btn-outline-danger btn-sm rounded-pill"
                   onClick={() => handleRemoveQuestion(qIndex)}
-                  disabled={formData.questions.length === 1}
+                  disabled={questions.length === 1}
                 >
                   <i className="bi bi-trash me-1"></i> Remove
                 </button>
@@ -247,6 +274,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                       onChange={(e) => handleQuestionChange(qIndex, 'text', e.target.value)}
                       required 
                       placeholder="Enter the question here..."
+                      data-testid={`question-text-${qIndex}`}
                     />
                   </div>
                   <div className="col-md-4">
@@ -255,6 +283,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                       className="form-select border-0 shadow-sm" 
                       value={q.type} 
                       onChange={(e) => handleQuestionChange(qIndex, 'type', e.target.value)}
+                      data-testid={`question-type-${qIndex}`}
                     >
                       {QUESTION_TYPES.map(type => (
                         <option key={type.value} value={type.value}>{type.label}</option>
@@ -271,6 +300,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                       onChange={(e) => handleQuestionChange(qIndex, 'points', parseInt(e.target.value))}
                       required 
                       min="0"
+                      data-testid={`question-points-${qIndex}`}
                     />
                   </div>
                 </div>
@@ -290,6 +320,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                                   checked={Array.isArray(q.correctAnswer) && q.correctAnswer.includes(opt)}
                                   onChange={() => handleToggleCorrectAnswer(qIndex, opt)}
                                   disabled={!opt.trim()}
+                                  data-testid={`question-${qIndex}-correct-${oIndex}`}
                                 />
                               ) : (
                                 <input 
@@ -299,6 +330,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                                   checked={q.correctAnswer === opt && opt !== ''}
                                   onChange={() => handleQuestionChange(qIndex, 'correctAnswer', opt)}
                                   disabled={!opt.trim()}
+                                  data-testid={`question-${qIndex}-correct-${oIndex}`}
                                 />
                               )}
                             </div>
@@ -310,6 +342,7 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
                               placeholder={`Option ${oIndex + 1}`}
                               required={q.type !== 'written'}
                               disabled={q.type === 'true-false'}
+                              data-testid={`question-${qIndex}-option-${oIndex}`}
                             />
                           </div>
                         </div>
@@ -336,14 +369,14 @@ const ExamForm = ({ formData, setFormData, isEditing, onSave, onCancel }) => {
           ))}
           
           <div className="d-flex justify-content-between align-items-center mt-5">
-            <button type="button" className="btn btn-outline-primary px-4" onClick={handleAddQuestion}>
+            <button type="button" className="btn btn-outline-primary px-4" onClick={handleAddQuestion} data-testid="add-question">
               <i className="bi bi-plus-lg me-1"></i> Add Question
             </button>
             <div className="d-flex gap-3">
-              <button type="button" className="btn btn-light px-4" onClick={onCancel}>
+              <button type="button" className="btn btn-light px-4" onClick={onCancel} data-testid="exam-cancel">
                 Cancel
               </button>
-              <button type="submit" className="btn btn-primary px-5 fw-bold">
+              <button type="submit" className="btn btn-primary px-5 fw-bold" data-testid="exam-save">
                 {isEditing ? 'Update Exam' : 'Save Exam'}
               </button>
             </div>

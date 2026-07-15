@@ -60,16 +60,20 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
     setSaveMessage('');
     const finalScore = calculateScore();
     try {
-      await examService.updateSubmissionFeedback(submission.id, feedback, questionFeedback, isFeedbackVisible, finalScore);
+      const updatedSubmission = await examService.updateSubmissionFeedback(submission.id, feedback, questionFeedback, isFeedbackVisible);
       
       // If the review is released, notify the student
       if (isFeedbackVisible) {
-        notificationService.addNotification({
-          studentName: submission.studentName, // Used for routing if userId isn't available
-          title: 'Feedback Released',
-          message: `Your results for "${exam.title}" are now available. Score: ${finalScore.toFixed(0)}%`,
-          type: 'feedback'
-        });
+        try {
+          notificationService.addNotification({
+            userId: submission.studentId, 
+            title: 'Feedback Released',
+            message: `Your results for "${exam.title}" are now available. Score: ${finalScore.toFixed(0)}%`,
+            type: 'feedback'
+          });
+        } catch (notificationError) {
+          console.error("Failed to create grading notification:", notificationError);
+        }
       }
 
       setSaveMessage('Review released successfully!');
@@ -90,12 +94,39 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
     }));
   };
 
+  const earnedPoints =
+    Number(submission.score ?? 0);
+
+  const maxPoints =
+    Number(submission.maxScore ?? 0);
+
+  const storedPercentage =
+    Number(submission.percentage);
+
+  const displayedPercentage =
+    Number.isFinite(storedPercentage) &&
+    storedPercentage >= 0 &&
+    storedPercentage <= 100
+      ? storedPercentage
+      : maxPoints > 0
+        ? (earnedPoints / maxPoints) * 100
+        : 0;
+
   return (
-    <div className="animate__animated animate__fadeIn">
+    <div className="animate__animated animate__fadeIn" data-testid="submission-detail">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h3 className="fw-bold text-dark mb-1">Marking Submission</h3>
-          <p className="text-muted mb-0">{submission.studentName} - {exam.title}</p>
+          <h3 className="fw-bold text-dark mb-1" 
+          data-testid="submission-detail-title">Marking Submission</h3>
+        <p className="text-muted mb-0">
+          <span data-testid="submission-detail-student">
+            {submission.studentName}
+          </span>
+          {" - "}
+          <span data-testid="submission-detail-exam-title">
+            {exam.title}
+          </span>
+        </p>
         </div>
         <button className="btn btn-outline-secondary px-4" onClick={onBack}>
           <i className="bi bi-arrow-left me-2"></i>Back to List
@@ -106,8 +137,8 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
         <div className="col-md-3">
           <div className="card border-0 shadow-sm h-100 p-3 text-center">
             <small className="text-uppercase text-muted fw-bold mb-2">Calculated Score</small>
-            <h2 className={`display-5 fw-bold mb-0 ${submission.score >= 60 ? 'text-success' : 'text-danger'}`}>
-              {submission.score.toFixed(0)}%
+            <h2 data-testid="submission-score" className={`display-5 fw-bold mb-0 ${displayedPercentage >= 60 ? 'text-success' : 'text-danger'}`}>
+              {displayedPercentage.toFixed(0)}%
             </h2>
           </div>
         </div>
@@ -141,7 +172,7 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
         <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
           <h5 className="fw-bold mb-0">General Review & Overall Feedback</h5>
           {saveMessage && (
-            <span className={`badge ${saveMessage.includes('success') ? 'bg-success' : 'bg-danger'} animate__animated animate__fadeIn`}>
+            <span data-testid="submission-save-success" className={`badge ${saveMessage.includes('success') ? 'bg-success' : 'bg-danger'} animate__animated animate__fadeIn`}>
               {saveMessage}
             </span>
           )}
@@ -150,6 +181,7 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
           <div className="mb-3">
             <label htmlFor="feedbackText" className="form-label fw-semibold">Overall Comments</label>
             <textarea 
+              data-testid="submission-feedback"
               className="form-control border-0 shadow-sm" 
               id="feedbackText" 
               rows="3" 
@@ -162,6 +194,7 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
             <div className="form-check form-switch">
               {/* תיבת סימון לתת רשות לסטודנט לצפות במשוב */}
               <input 
+                data-testid="submission-feedback-visible"
                 className="form-check-input" 
                 type="checkbox" 
                 role="switch" 
@@ -174,6 +207,7 @@ const SubmissionDetail = ({ submission, exam, onBack }) => {
               </label>
             </div>
             <button 
+              data-testid="submission-save"
               className="btn btn-success px-4 fw-bold shadow-sm" 
               onClick={handleSaveFeedback}
               disabled={isSaving}

@@ -23,6 +23,7 @@ const TeacherDashboard = ({ user }) => {
   const [editExamId, setEditExamId] = useState(null);
   const [previewExam, setPreviewExam] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [publishingId, setPublishingId] =useState(null);
 
   // אובייקט הבחינה ההתחלתית.
   const initialExamState = {
@@ -47,6 +48,33 @@ const TeacherDashboard = ({ user }) => {
       `Generate a medium-difficulty exam with 10 multiple-choice questions using only the uploaded PDF "${document.title}". Save it as a draft.`
     );
   };
+
+  const handlePublishExam =
+    async (examId) => {
+      const response =
+        await examService.publishExam(
+          examId
+        );
+
+      const publishedExam =
+        response?.exam ||
+        response?.data ||
+        response;
+
+      setExams((current) =>
+        current.map((exam) =>
+          String(exam.id) ===
+          String(examId)
+            ? {
+                ...exam,
+                ...publishedExam,
+                published: true,
+                isPublished: true,
+              }
+            : exam
+        )
+      );
+    };
 
   // טעינת המבחנים
   const fetchExams = async () => {
@@ -126,11 +154,25 @@ const TeacherDashboard = ({ user }) => {
     try {
       if (isEditing) {
         await examService.updateExam(editExamId, formData);
+
+        const refreshedExams =
+          await examService.getAllExams();
+
+        setExams(
+          Array.isArray(refreshedExams)
+            ? refreshedExams
+            : refreshedExams?.exams ||
+              refreshedExams?.data ||
+              []
+        );
+
+        setEditExamId(null);
+        navigate("/teacher/exams");
       } else {
         await examService.createExam(formData);
       }
       resetToHome();
-      fetchExams();
+      await fetchExams();
       navigate('/teacher/exams');
     } catch (error) {
       alert(`Failed to ${isEditing ? 'update' : 'create'} exam`);
@@ -140,13 +182,99 @@ const TeacherDashboard = ({ user }) => {
   // פונקציה אסינכרונית לטפל בלחיצה על כפתור עריכה של המבחן.
   const handleEditClick = async (id) => {
     try {
-      const exam = await examService.getExamById(id);
-      setFormData(exam);
+      console.log(
+        "[Edit Exam] Loading:",
+        id
+      );
+
+      const exam =
+        await examService.getExamById(id);
+
+      console.log(
+        "[Edit Exam] API result:",
+        exam
+      );
+
+      const normalizedQuestions =
+        Array.isArray(exam.questions) &&
+        exam.questions.length > 0
+          ? exam.questions.map(
+              (question, index) => ({
+                id:
+                  question.id ||
+                  `q${index + 1}`,
+
+                type:
+                  question.type ||
+                  "multiple-choice",
+
+                text:
+                  question.text ||
+                  question.question ||
+                  question.questionText ||
+                  "",
+
+                options:
+                  Array.isArray(
+                    question.options
+                  )
+                    ? question.options
+                    : [],
+
+                correctAnswer:
+                  question.correctAnswer ??
+                  question.correct_answer ??
+                  "",
+
+                points:
+                  Number(
+                    question.points
+                  ) || 0,
+
+                sourceEvidence:
+                  question.sourceEvidence ||
+                  question.source_evidence ||
+                  null,
+              })
+            )
+          : initialExamState.questions;
+
+      const normalizedExam = {
+        ...initialExamState,
+        ...exam,
+        questions:
+          normalizedQuestions,
+      };
+
+      console.log(
+        "[Edit Exam] Normalized:",
+        normalizedExam
+      );
+
+      setFormData(normalizedExam);
       setEditExamId(id);
       setIsEditing(true);
-      navigate(`/teacher/exams/edit/${id}`);
+
+      navigate(
+        `/teacher/exams/edit/${encodeURIComponent(
+          id
+        )}`
+      );
     } catch (error) {
-      alert("Failed to load exam for editing");
+      console.error(
+        "[Edit Exam] Failed:",
+        error
+      );
+
+      console.error(
+        "[Edit Exam] Stack:",
+        error?.stack
+      );
+
+      alert(
+        error?.message ||
+        "Failed to load exam for editing"
+      );
     }
   };
 
@@ -155,9 +283,17 @@ const TeacherDashboard = ({ user }) => {
     try {
       await examService.deleteExam(id);
       setDeletingId(null);
-      fetchExams();
+      await fetchExams();
     } catch (error) {
-      alert("Failed to delete exam");
+      console.error(
+        "Failed to delete exam:",
+        error
+      );
+
+      alert(
+        error?.message ||
+        "Failed to delete exam"
+      );
     }
   };
 
@@ -193,7 +329,7 @@ const TeacherDashboard = ({ user }) => {
             </div>
             <h4 className="fw-bold">Create New Exam</h4>
             <p className="text-muted">Design a new assessment with multiple question types.</p>
-            <button className="btn btn-primary btn-lg w-100 mt-3 fw-bold" onClick={() => { resetToHome(); navigate('/teacher/exams/new'); }}>
+            <button className="btn btn-primary btn-lg w-100 mt-3 fw-bold" data-testid="create-exam-button"  onClick={() => { resetToHome(); navigate('/teacher/exams/new'); }}>
               Launch Creator
             </button>
           </div>
@@ -255,7 +391,7 @@ const TeacherDashboard = ({ user }) => {
   );
 
   return (
-    <div className="container mt-2">
+    <div className="container mt-2" data-testid="teacher-dashboard">
       <div className="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
         <h2 className="fw-bold mb-0">Teacher Dashboard</h2>
       </div>
@@ -278,8 +414,10 @@ const TeacherDashboard = ({ user }) => {
               onEdit={handleEditClick} 
               onDelete={handleDeleteExam} 
               onPreview={handlePreviewClick} 
+              onPublish={handlePublishExam}
               deletingId={deletingId} 
-              setDeletingId={setDeletingId} 
+              setDeletingId={setDeletingId}
+              publishingId={publishingId} 
             />
           </div>
         } />

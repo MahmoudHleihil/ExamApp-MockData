@@ -1,101 +1,156 @@
 import express from "express";
 import * as ExamController from "../controllers/examController.js";
-import { authenticate, authorize } from "../middleware/authMiddleware.js";
-import { examValidation } from "../middleware/validationMiddleware.js";
+
+import {
+  authenticate,
+  authorize,
+} from "../middleware/authMiddleware.js";
+
+import {
+  examPasswordLimiter,
+} from "../middleware/examPasswordLimiter.js";
+
+import {
+  examValidation,
+} from "../middleware/validationMiddleware.js";
 
 const router = express.Router();
 
 /*
 |--------------------------------------------------------------------------
-| Teacher / Admin
+| Teacher / Admin exam management
 |--------------------------------------------------------------------------
 */
 
 router.post(
-    "/",
-    authenticate,
-    authorize("Teacher", "Admin"),
-    examValidation,
-    ExamController.createExam
+  "/",
+  authenticate,
+  authorize("Teacher", "Admin"),
+  examValidation,
+  ExamController.createExam
+);
+
+/*
+ * Keep this endpoint because the existing teacher
+ * frontend requests GET /api/exams.
+ */
+router.get(
+  "/",
+  authenticate,
+  authorize("Teacher", "Admin"),
+  ExamController.getAllExams
+);
+
+router.get(
+  "/manage",
+  authenticate,
+  authorize("Teacher", "Admin"),
+  ExamController.getAllExams
+);
+
+router.get(
+  "/manage/:id",
+  authenticate,
+  authorize("Teacher", "Admin"),
+  ExamController.getExamById
 );
 
 router.put(
-    "/:id",
-    authenticate,
-    authorize("Teacher", "Admin"),
-    ExamController.updateExam
+  "/:id",
+  authenticate,
+  authorize("Teacher", "Admin"),
+  ExamController.updateExam
 );
 
 router.delete(
-    "/:id",
-    authenticate,
-    authorize("Teacher", "Admin"),
-    ExamController.deleteExam
+  "/:id",
+  authenticate,
+  authorize("Teacher", "Admin"),
+  ExamController.deleteExam
 );
 
 /*
 |--------------------------------------------------------------------------
-| Student
+| Student exam access
 |--------------------------------------------------------------------------
 */
+
+router.get(
+  "/available",
+  authenticate,
+  authorize("Student"),
+  ExamController.getAvailableExams
+);
 
 router.post(
-    "/submit",
-    authenticate,
-    authorize("Student"),
-    ExamController.submitScore
-);
-
-router.get(
-    "/my-submissions",
-    authenticate,
-    authorize("Student"),
-    ExamController.getStudentSubmissions
-);
-
-router.get(
-  "/submissions/student/:studentName",
+  "/take/:id/verify-password",
   authenticate,
-  authorize("Student", "Admin"),
-  ExamController.getSubmissionsByStudent
+  authorize("Student"),
+  examPasswordLimiter,
+  ExamController.verifyExamPassword
+);
+
+router.get(
+  "/take/:id",
+  authenticate,
+  authorize("Student"),
+  ExamController.getExamForStudent
+);
+
+router.post(
+  "/submit",
+  authenticate,
+  authorize("Student"),
+  ExamController.submitScore
+);
+
+router.get(
+  "/my-submissions",
+  authenticate,
+  authorize("Student"),
+  ExamController.getStudentSubmissions
 );
 
 /*
 |--------------------------------------------------------------------------
-| Teacher / Admin
+| Teacher / Admin submissions
 |--------------------------------------------------------------------------
 */
 
 router.get(
-    "/submissions",
-    authenticate,
-    authorize("Teacher", "Admin"),
-    ExamController.getAllSubmissions
+  "/submissions",
+  authenticate,
+  authorize("Teacher", "Admin"),
+  ExamController.getAllSubmissions
 );
 
 router.put(
-    "/submissions/:id",
-    authenticate,
-    authorize("Teacher", "Admin"),
-    ExamController.updateSubmissionFeedback
+  "/submissions/:id",
+  authenticate,
+  authorize("Teacher", "Admin"),
+  ExamController.updateSubmissionFeedback
 );
 
 /*
 |--------------------------------------------------------------------------
-| Public Authenticated Routes
+| Existing teacher exam-detail endpoint
 |--------------------------------------------------------------------------
+|
+| Your current teacher frontend requests GET /api/exams/:id.
+| Restrict this endpoint so students cannot receive correct answers.
 */
-
 router.get(
-    "/",
-    authenticate,
-    ExamController.getAllExams
+  "/my-submissions/:submissionId/review",
+  authenticate,
+  authorize("Student"),
+  ExamController.getStudentSubmissionReview
 );
 
 router.get(
-    "/:id",
-    authenticate,
-    ExamController.getExamById
+  "/:id",
+  authenticate,
+  authorize("Teacher", "Admin"),
+  ExamController.getExamById
 );
 
 export default router;

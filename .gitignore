@@ -30,3 +30,8 @@ desktop.ini
 
 # Vite
 .vite/
+
+.env.e2e
+playwright-report/
+test-results/
+playwright/.auth/

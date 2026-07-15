@@ -424,6 +424,10 @@ async update(id, updates = {}) {
     }
 
     if (assignments.length > 0) {
+      assignments.push(
+        `updated_at = NOW()`
+      );
+
       values.push(id);
 
       const updateResult = await client.query(
@@ -514,7 +518,7 @@ async update(id, updates = {}) {
 
     await client.query("COMMIT");
 
-    return await this.findById(id);
+    return this.findById(id);
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;

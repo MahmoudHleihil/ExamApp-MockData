@@ -85,7 +85,7 @@ const PrivateHeader = ({ user, navigate, handleLogout }) => (
         <NotificationCenter user={user} />
       </div>
       <div className="text-end me-3">
-        <span className={`badge ${user.role === 'Admin' ? 'bg-danger' : user.role === 'Teacher' ? 'bg-success' : 'bg-info'} d-block mb-1`}>{user.role}</span>
+        <span className={`badge ${user.role === 'Admin' ? 'bg-danger' : user.role === 'Teacher' ? 'bg-success' : 'bg-info'} d-block mb-1`} data-testid="current-user-role">{user.role}</span>
         <span className="text-muted extra-small" style={{ fontSize: '0.75rem' }}>{user.email}</span>
       </div>
       <button 
