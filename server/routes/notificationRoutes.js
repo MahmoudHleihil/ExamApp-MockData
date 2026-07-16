@@ -37,7 +37,7 @@ router.get(
 
 router.post(
   "/",
-  authorize("Teacher", "Admin"),
+  authorize("Student", "Teacher", "Admin"),
   createNotification
 );
 

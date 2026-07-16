@@ -210,6 +210,65 @@ class SubmissionRepository {
       updatedAt: row.updated_at,
     };
   }
+  
+  async gradeWrittenAnswer(
+    submissionId,
+    questionId,
+    {
+      awardedPoints,
+      feedback,
+    }
+  ) {
+    const result =
+      await pool.query(
+        `
+          UPDATE submission_answers
+          SET
+            awarded_points =
+              $1::numeric,
+
+            feedback = $2,
+
+            is_correct =
+              CASE
+                WHEN $1::numeric =
+                  0
+                THEN FALSE
+                ELSE TRUE
+              END,
+
+            updated_at =
+              NOW()
+
+          WHERE
+            submission_id = $3
+            AND question_id = $4
+
+          RETURNING *
+        `,
+        [
+          awardedPoints,
+          feedback || "",
+          submissionId,
+          questionId,
+        ]
+      );
+
+    if (!result.rows[0]) {
+      const error =
+        new Error(
+          "Submission answer not found"
+        );
+
+      error.statusCode = 404;
+      throw error;
+    }
+
+    return this
+      .mapSubmissionAnswer(
+        result.rows[0]
+      );
+  }
 
   mapSubmissionAnswer(row) {
     return {

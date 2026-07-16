@@ -13,8 +13,7 @@ export const notificationService = {
   // מחזירה את כל ההודעות
   getNotifications: async (user) => {
     if (!API_CONFIG.useMock) {
-      const query = `userId=${user.id}&role=${user.role}&fullName=${encodeURIComponent(user.fullName || '')}`;
-      const response = await fetch(`${API_CONFIG.baseUrl}/notifications?${query}`, getFetchConfig());
+      const response = await fetch(`${API_CONFIG.baseUrl}/notifications`, getFetchConfig());
       if (!response.ok) throw new Error('Failed to fetch notifications');
       return await response.json();
     }
@@ -53,7 +52,7 @@ export const notificationService = {
   // לסמן ההודעה( לפי ID) כנקראה
   markAsRead: async (id) => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/notifications/${id}/read`, getFetchConfig('PUT'));
+      const response = await fetch(`${API_CONFIG.baseUrl}/notifications/${id}/read`, getFetchConfig('PATCH'));
       if (!response.ok) throw new Error('Failed to mark notification as read');
       notifyListeners();
       return;
@@ -69,7 +68,7 @@ export const notificationService = {
   // לסמן את כל ההודעות כנקראות
   markAllAsRead: async (user) => {
     if (!API_CONFIG.useMock) {
-      const response = await fetch(`${API_CONFIG.baseUrl}/notifications/read-all`, getFetchConfig('PUT', { userId: user.id, role: user.role }));
+      const response = await fetch(`${API_CONFIG.baseUrl}/notifications/read-all`, getFetchConfig('PATCH', { userId: user.id, role: user.role }));
       if (!response.ok) throw new Error('Failed to mark all notifications as read');
       notifyListeners();
       return;

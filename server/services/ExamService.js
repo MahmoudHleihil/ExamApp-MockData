@@ -7,6 +7,11 @@ import {
 } from "./createAiGradingService.js";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
+import logger from "../utils/logger.js";
+
+import {
+  enqueueWrittenAnswerGrading,
+} from "../queues/aiGradingQueue.js";
 
 function sanitizeExamForClient(exam) {
   if (!exam || typeof exam !== "object") {
@@ -194,6 +199,150 @@ class ExamService {
     };
     }
 
+    async gradeWrittenAnswer(
+    submissionId,
+    questionId,
+    {
+        awardedPoints,
+        feedback = "",
+    },
+    user
+    ) {
+    const submission =
+        await SubmissionRepository
+        .findById(
+            submissionId
+        );
+
+    if (!submission) {
+        const error =
+        new Error(
+            "Submission not found"
+        );
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const exam =
+        await ExamRepository
+        .findById(
+            submission.examId
+        );
+
+    if (!exam) {
+        const error =
+        new Error(
+            "Exam not found"
+        );
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const isOwner =
+        String(
+        exam.createdBy
+        ) ===
+        String(user.id);
+
+    if (
+        user.role !==
+        "Admin" &&
+        !isOwner
+    ) {
+        const error =
+        new Error(
+            "You are not allowed to grade this submission"
+        );
+
+        error.statusCode = 403;
+        throw error;
+    }
+
+    const question =
+        exam.questions.find(
+        (item) =>
+            String(item.id) ===
+            String(questionId)
+        );
+
+    if (!question) {
+        const error =
+        new Error(
+            "Question not found"
+        );
+
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (
+        question.type !==
+        "written"
+    ) {
+        const error =
+        new Error(
+            "Manual grading is only available for written questions"
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const numericPoints =
+        Number(
+        awardedPoints
+        );
+
+    const maximum =
+        Number(
+        question.points
+        ) || 0;
+
+    if (
+        !Number.isFinite(
+        numericPoints
+        ) ||
+        numericPoints < 0 ||
+        numericPoints >
+        maximum
+    ) {
+        const error =
+        new Error(
+            `Awarded points must be between 0 and ${maximum}`
+        );
+
+        error.statusCode = 400;
+        throw error;
+    }
+
+    await SubmissionRepository
+        .gradeWrittenAnswer(
+        submissionId,
+        questionId,
+        {
+            awardedPoints:
+            numericPoints,
+
+            feedback:
+            String(
+                feedback || ""
+            ),
+        }
+        );
+
+    await SubmissionRepository
+        .recalculateSubmissionScore(
+        submissionId
+        );
+
+    return SubmissionRepository
+        .findById(
+        submissionId
+        );
+    }
+
     async submitAnswers(
     {
         examId,
@@ -202,13 +351,16 @@ class ExamService {
     user,
     dependencies = {}
     ) {
-    const aiGradingService =
-        Object.prototype.hasOwnProperty.call(
+    const hasInjectedAiGradingService =
+    Object.prototype.hasOwnProperty.call(
         dependencies,
         "aiGradingService"
-        )
+    );
+
+    const injectedAiGradingService =
+    hasInjectedAiGradingService
         ? dependencies.aiGradingService
-        : getAiGradingService();
+        : undefined;
 
     const exam =
         await ExamRepository.findById(
@@ -423,6 +575,236 @@ class ExamService {
                 .releaseScoresImmediately
             ),
         });
+
+        if (hasWrittenQuestions) {
+        const writtenQuestions =
+            exam.questions.filter(
+            (question) =>
+                question.type ===
+                "written"
+            );
+
+        for (const question of writtenQuestions) {
+            const studentAnswer =
+            String(
+                answers[question.id] ??
+                ""
+            ).trim();
+
+            /*
+            * Integration and unit tests may inject
+            * a deterministic grading service.
+            */
+            if (hasInjectedAiGradingService) {
+            if (!injectedAiGradingService) {
+                continue;
+            }
+
+            try {
+                const suggestion =
+                await injectedAiGradingService
+                    .gradeWrittenAnswer({
+                    question:
+                        question.text ||
+                        question.question ||
+                        "",
+
+                    referenceAnswer:
+                        question.correctAnswer ||
+                        "",
+
+                    rubric:
+                        question.sourceEvidence ||
+                        question.rubric ||
+                        "",
+
+                    studentAnswer,
+
+                    maxPoints:
+                        Number(
+                        question.points
+                        ) || 0,
+                    });
+
+                await SubmissionRepository
+                .updateAiGradingSuggestion(
+                    createdSubmission.id,
+                    question.id,
+                    suggestion
+                );
+            } catch (gradingError) {
+                logger.error(
+                "Injected written-answer grading failed",
+                {
+                    submissionId:
+                    createdSubmission.id,
+
+                    questionId:
+                    question.id,
+
+                    error:
+                    gradingError?.message ||
+                    "Unknown grading error",
+                }
+                );
+
+                await SubmissionRepository
+                .updateAiGradingSuggestion(
+                    createdSubmission.id,
+                    question.id,
+                    {
+                    status:
+                        "ai-grading-failed",
+
+                    awardedPoints: null,
+                    confidence: null,
+
+                    feedback:
+                        "AI grading is currently unavailable. Manual teacher review is required.",
+
+                    strengths: [],
+                    missingConcepts: [],
+                    }
+                )
+                .catch(
+                    (persistenceError) => {
+                    logger.error(
+                        "Failed to persist injected grading failure",
+                        {
+                        submissionId:
+                            createdSubmission.id,
+
+                        questionId:
+                            question.id,
+
+                        error:
+                            persistenceError
+                            ?.message,
+                        }
+                    );
+                    }
+                );
+            }
+
+            continue;
+            }
+
+            /*
+            * Production path: enqueue the work for
+            * the independent AI worker.
+            */
+            try {
+            const job =
+                await enqueueWrittenAnswerGrading({
+                submissionId:
+                    createdSubmission.id,
+
+                questionId:
+                    question.id,
+
+                question:
+                    question.text ||
+                    question.question ||
+                    "",
+
+                referenceAnswer:
+                    question.correctAnswer ||
+                    "",
+
+                rubric:
+                    question.sourceEvidence ||
+                    question.rubric ||
+                    "",
+
+                studentAnswer,
+
+                maxPoints:
+                    Number(
+                    question.points
+                    ) || 0,
+                });
+
+            if (!job) {
+                logger.warn(
+                "AI grading queue is disabled",
+                {
+                    submissionId:
+                    createdSubmission.id,
+
+                    questionId:
+                    question.id,
+                }
+                );
+            } else {
+                logger.info(
+                "Written-answer grading job queued",
+                {
+                    jobId:
+                    job.id,
+
+                    submissionId:
+                    createdSubmission.id,
+
+                    questionId:
+                    question.id,
+                }
+                );
+            }
+            } catch (queueError) {
+            logger.error(
+                "Failed to enqueue written-answer grading",
+                {
+                submissionId:
+                    createdSubmission.id,
+
+                questionId:
+                    question.id,
+
+                error:
+                    queueError?.message ||
+                    "Unknown queue error",
+                }
+            );
+
+            await SubmissionRepository
+                .updateAiGradingSuggestion(
+                createdSubmission.id,
+                question.id,
+                {
+                    status:
+                    "ai-grading-failed",
+
+                    awardedPoints: null,
+                    confidence: null,
+
+                    feedback:
+                    "Automated grading could not be scheduled. Manual teacher review is required.",
+
+                    strengths: [],
+                    missingConcepts: [],
+                }
+                )
+                .catch(
+                (persistenceError) => {
+                    logger.error(
+                    "Failed to persist AI queue failure",
+                    {
+                        submissionId:
+                        createdSubmission.id,
+
+                        questionId:
+                        question.id,
+
+                        error:
+                        persistenceError
+                            ?.message,
+                    }
+                    );
+                }
+                );
+            }
+        }
+        }
     } catch (error) {
         if (
         error?.code ===
@@ -451,7 +833,7 @@ class ExamService {
     */
     if (
         hasWrittenQuestions &&
-        aiGradingService
+        injectedAiGradingService
     ) {
         const writtenQuestions =
         exam.questions.filter(
@@ -503,7 +885,7 @@ class ExamService {
             }
 
             const suggestion =
-            await aiGradingService
+            await injectedAiGradingService
                 .gradeWrittenAnswer({
                 question:
                     question.text ||

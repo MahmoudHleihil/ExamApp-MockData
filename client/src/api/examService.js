@@ -377,6 +377,37 @@ export const examService = {
     );
   },
 
+  gradeWrittenAnswer: async (
+      submissionId,
+      questionId,
+      gradingData
+    ) => {
+      const response =
+        await fetch(
+          `${API_CONFIG.baseUrl}/exams/submissions/${encodeURIComponent(
+            submissionId
+          )}/answers/${encodeURIComponent(
+            questionId
+          )}/grade`,
+          getFetchConfig(
+            "PUT",
+            gradingData
+          )
+        );
+
+      const body =
+        await parseApiResponse(
+          response,
+          "Failed to grade written answer"
+        );
+
+      return (
+        body?.submission ||
+        body?.data ||
+        body
+      );
+  },
+
   // מחזירה את כל ההגשוש
   getAllSubmissions: async () => {
     if (!API_CONFIG.useMock) {

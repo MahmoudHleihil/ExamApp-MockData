@@ -33,12 +33,12 @@ class NotificationService {
     this.requireUser(actor);
 
     if (
-      !["Teacher", "Admin"].includes(
+      !["Student", "Teacher", "Admin"].includes(
         actor.role
       )
     ) {
       const error = new Error(
-        "Only teachers and admins can create notifications"
+        "Only students, teachers and admins can create notifications"
       );
 
       error.statusCode = 403;

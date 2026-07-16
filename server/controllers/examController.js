@@ -158,6 +158,36 @@ export const submitAnswers = async (
   }
 };
 
+export const gradeWrittenAnswer =
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const submission =
+        await ExamService
+          .gradeWrittenAnswer(
+            req.params
+              .submissionId,
+
+            req.params
+              .questionId,
+
+            req.body,
+
+            req.user
+          );
+
+      res.json({
+        success: true,
+        submission,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
 export const submitScore = async (
   req,
   res,

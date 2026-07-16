@@ -1,4 +1,5 @@
 import { z } from "zod";
+
 import MCPTool from "../../tool.js";
 import registry from "../../registry.js";
 import ExamService from "../../../services/ExamService.js";
@@ -6,15 +7,30 @@ import EntityResolverService from "../../../services/EntityResolverService.js";
 
 const deleteExam = new MCPTool({
   name: "delete_exam",
+
   description:
-    "Delete an exam. First call with the real examId only. If confirmation is required, call again using exactly the confirmationId returned by the server. Never invent exam IDs or confirmation IDs.",
-  permissions: ["Teacher", "Admin"],
+    "Delete an exam. Provide either a real examId or an exact examTitle. If confirmation is required, call the tool again using exactly the confirmationId returned by the server. Never invent exam IDs or confirmation IDs.",
+
+  permissions: [
+    "Teacher",
+    "Admin",
+  ],
+
   requiresConfirmation: true,
 
   schema: z
     .object({
-      examId: z.string().trim().min(1).optional(),
-      examTitle: z.string().trim().min(1).optional(),
+      examId: z
+        .string()
+        .trim()
+        .min(1)
+        .optional(),
+
+      examTitle: z
+        .string()
+        .trim()
+        .min(1)
+        .optional(),
 
       confirmationId: z
         .string()
@@ -24,7 +40,10 @@ const deleteExam = new MCPTool({
     })
     .refine(
       (args) =>
-        Boolean(args.examId || args.examTitle),
+        Boolean(
+          args.examId ||
+          args.examTitle
+        ),
       {
         message:
           "examId or examTitle is required",
@@ -33,55 +52,75 @@ const deleteExam = new MCPTool({
 
   openAiSchema: {
     type: "object",
+
     properties: {
       examId: {
         type: "string",
         description:
-          "A real exam ID returned by get_my_exams. Never invent this value.",
+          "A real exam ID returned by get_my_exams. Provide either examId or examTitle. Never invent this value.",
       },
+
       examTitle: {
         type: "string",
         description:
-          "The exact exam title returned by get_my_exams. Prefer this when the user refers to an exam by name.",
+          "The exact exam title returned by get_my_exams. Provide either examTitle or examId.",
       },
+
       confirmationId: {
         type: "string",
         description:
-          "The exact confirmation ID returned by the first delete_exam call. Never invent it.",
+          "The exact confirmation ID returned by the first delete_exam call. Include it only when confirming deletion. Never invent it.",
       },
     },
-    anyOf: [
-      { required: ["examId"] },
-      { required: ["examTitle"] },
-    ],
+
+    required: [],
+
     additionalProperties: false,
   },
 
-  async execute(args, context) {
+  async execute(
+    args,
+    context
+  ) {
     const exam =
-      await EntityResolverService.resolveExam(
-        {
-          examId: args.examId,
-          examTitle: args.examTitle,
-        },
-        context.user
-      );
+      await EntityResolverService
+        .resolveExam(
+          {
+            examId:
+              args.examId,
 
-      const deleted = await ExamService.deleteExam(
-        exam.id,
-        context.user
-      );
+            examTitle:
+              args.examTitle,
+          },
 
-      return {
-        success: true,
-        deleted: true,
-        examId: deleted.id,
-        title: deleted.title,
-        message: `Exam "${deleted.title}" was deleted successfully.`,
-      };
+          context.user
+        );
+
+    const deleted =
+      await ExamService
+        .deleteExam(
+          exam.id,
+          context.user
+        );
+
+    return {
+      success: true,
+      deleted: true,
+
+      examId:
+        deleted.id,
+
+      title:
+        deleted.title,
+
+      message:
+        `Exam "${deleted.title}" was deleted successfully.`,
+    };
   },
 });
 
-registry.register(deleteExam);
+registry.register(
+  deleteExam
+);
 
 export default deleteExam;

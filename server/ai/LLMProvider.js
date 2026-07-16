@@ -8,6 +8,41 @@ function parseModels(value = "") {
     .filter(Boolean);
 }
 
+function getSafeMaxTokens(
+  requestedValue,
+  fallback = 2000
+) {
+  const configuredLimit =
+    Number(
+      process.env
+        .AI_CHAT_MAX_TOKENS ||
+      fallback
+    );
+
+  const safeConfiguredLimit =
+    Number.isFinite(
+      configuredLimit
+    ) &&
+    configuredLimit > 0
+      ? configuredLimit
+      : fallback;
+
+  const requested =
+    Number(requestedValue);
+
+  if (
+    !Number.isFinite(requested) ||
+    requested <= 0
+  ) {
+    return safeConfiguredLimit;
+  }
+
+  return Math.min(
+    requested,
+    safeConfiguredLimit
+  );
+}
+
 class LLMProvider {
   constructor() {
     this.modelHealth = new Map();
@@ -39,24 +74,28 @@ class LLMProvider {
     return false;
   }
 
-  getModels() {
-    const primary = process.env.OPENROUTER_MODEL?.trim();
+getModels() {
+  const primary =
+    process.env
+      .OPENROUTER_MODEL
+      ?.trim() ||
+    "openai/gpt-4.1-mini";
 
-    if (!primary) {
-      const error = new Error("OPENROUTER_MODEL is missing");
-      error.statusCode = 500;
-      throw error;
-    }
-
-    const fallbacks = parseModels(
-      process.env.OPENROUTER_FALLBACK_MODELS
+  const fallbacks =
+    parseModels(
+      process.env
+        .OPENROUTER_FALLBACK_MODELS
     );
 
-    return [
-      primary,
-      ...fallbacks.filter((model) => model !== primary),
-    ];
-  }
+  return [
+    primary,
+
+    ...fallbacks.filter(
+      (model) =>
+        model !== primary
+    ),
+  ];
+}
 
   async createChatCompletion(options) {
     const models = this.getModels();
@@ -85,76 +124,127 @@ class LLMProvider {
         continue;
       }
 
-      try {
-        console.log(`Trying OpenRouter model: ${model}`);
+try {
+  console.log(
+    `Trying OpenRouter model: ${model}`
+  );
 
-        const response = await client.chat.completions.create({
-          ...options,
-          model,
-        });
+  const {
+    max_tokens,
+    max_completion_tokens,
+    ...safeOptions
+  } = options || {};
 
-        const message = response?.choices?.[0]?.message;
+  const response =
+    await client
+      .chat
+      .completions
+      .create({
+        ...safeOptions,
 
-        if (!message) {
-          const error = new Error(
-            "Provider returned no assistant message"
-          );
-          error.statusCode = 502;
-          throw error;
-        }
+        model,
 
-        console.log(
-          `OpenRouter model succeeded: ${response.model || model}`
-        );
+        max_tokens:
+          getSafeMaxTokens(
+            max_tokens ??
+            max_completion_tokens
+          ),
+      });
 
-        this.markModelHealthy(model);
+  const message =
+    response
+      ?.choices?.[0]
+      ?.message;
 
-        return response;
-      } catch (error) {
-        const status = Number(
-          error?.status ||
-          error?.statusCode ||
-          error?.error?.code ||
-          502
-        );
+  if (!message) {
+    const error =
+      new Error(
+        "Provider returned no assistant message"
+      );
 
-        const message =
-          error?.error?.metadata?.raw ||
-          error?.error?.message ||
-          error?.message ||
-          "Unknown provider error";
+    error.statusCode = 502;
+    throw error;
+  }
 
-        const retryable =
-            status === 429 ||
-            status >= 500 ||
-            message.includes("temporarily rate-limited") ||
-            message.includes("unavailable") ||
-            message.includes("Provider returned error") ||
-            message.includes("model is unavailable");
+  console.log(
+    `OpenRouter model succeeded: ${
+      response.model ||
+      model
+    }`
+  );
 
-        console.error(`Model failed: ${model}`, {
-          status,
-          message,
-        });
+  this.markModelHealthy(
+    model
+  );
 
-        errors.push({
-          model,
-          status,
-          message,
-        });
-        if (!retryable) {
-            throw this.normalizeError(error, errors);
-        }
-        if (!this.shouldTryNextModel(status)) {
-          throw this.normalizeError(error, errors);
-        }
-        if (this.shouldTryNextModel(status, message)) {
-          this.markModelUnhealthy(model, status, message);
-          continue;
-        }
+  return response;
+} catch (error) {
+  const status =
+    Number(
+      error?.status ||
+      error?.statusCode ||
+      error?.error?.code ||
+      502
+    );
 
-        throw this.normalizeError(error);
-      }
+  const message =
+    error?.error?.metadata
+      ?.raw ||
+    error?.error?.message ||
+    error?.message ||
+    "Unknown provider error";
+
+  const retryable =
+    status === 408 ||
+    status === 429 ||
+    status >= 500 ||
+    message.includes(
+      "temporarily rate-limited"
+    ) ||
+    message.includes(
+      "unavailable"
+    ) ||
+    message.includes(
+      "Provider returned error"
+    ) ||
+    message.includes(
+      "model is unavailable"
+    );
+
+  console.error(
+    `Model failed: ${model}`,
+    {
+      status,
+      message,
+    }
+  );
+
+  errors.push({
+    model,
+    status,
+    message,
+  });
+
+  const shouldFallback =
+    retryable &&
+    this.shouldTryNextModel(
+      status,
+      message
+    );
+
+  if (!shouldFallback) {
+    throw this.normalizeError(
+      error,
+      errors
+    );
+  }
+
+  this.markModelUnhealthy(
+    model,
+    status,
+    message
+  );
+}
     }
 
     const error = new Error(
@@ -180,11 +270,26 @@ class LLMProvider {
       try {
         console.log(`Trying streaming model: ${model}`);
 
-        const stream = await client.chat.completions.create({
-          ...options,
-          model,
-          stream: true,
-        });
+const {
+  max_tokens,
+  max_completion_tokens,
+  ...safeOptions
+} = options || {};
+
+const stream =
+  await client.chat.completions.create({
+    ...safeOptions,
+
+    model,
+
+    stream: true,
+
+    max_tokens:
+      getSafeMaxTokens(
+        max_tokens ??
+        max_completion_tokens
+      ),
+  });
 
         this.markModelHealthy(model);
 

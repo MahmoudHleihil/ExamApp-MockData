@@ -74,6 +74,128 @@ const SubmissionDetail = ({
     setOverrideValues,
   ] = useState({});
 
+  const [
+    manualGrades,
+    setManualGrades,
+  ] = useState({});
+
+  useEffect(() => {
+    const initialGrades = {};
+
+    for (
+      const answer
+      of submission?.answerDetails || []
+    ) {
+      initialGrades[
+        String(answer.questionId)
+      ] = {
+        awardedPoints:
+          answer.awardedPoints ??
+          "",
+
+        feedback:
+          answer.feedback ||
+          "",
+      };
+    }
+
+    setManualGrades(
+      initialGrades
+    );
+  }, [submission]);
+  
+  const handleManualGrade =
+    async (
+    questionId,
+    maxPoints
+  ) => {
+    if (!questionId) {
+      setAiReviewError(
+        "The stored submission answer has no question ID."
+      );
+      return;
+    }
+    const questionKey =
+      String(questionId);
+
+    const grade =
+      manualGrades[
+        questionKey
+      ] || {};
+
+    const awardedPoints =
+      Number(
+        grade.awardedPoints
+      );
+
+    if (
+      grade.awardedPoints ===
+        "" ||
+      !Number.isFinite(
+        awardedPoints
+      )
+    ) {
+      setAiReviewError(
+        "Enter a valid score."
+      );
+
+      return;
+    }
+
+    if (
+      awardedPoints < 0 ||
+      awardedPoints >
+        maxPoints
+    ) {
+      setAiReviewError(
+        `Score must be between 0 and ${maxPoints}.`
+      );
+
+      return;
+    }
+
+    setAiReviewLoading(
+      (current) => ({
+        ...current,
+        [questionKey]: true,
+      })
+    );
+
+    setAiReviewError("");
+
+    try {
+      const updatedSubmission =
+        await examService
+          .gradeWrittenAnswer(
+            currentSubmission.id,
+            questionId,
+            {
+              awardedPoints,
+
+              feedback:
+                grade.feedback ||
+                "",
+            }
+          );
+
+      updateLocalSubmission(
+        updatedSubmission
+      );
+    } catch (error) {
+      setAiReviewError(
+        error?.message ||
+          "Failed to grade written answer."
+      );
+    } finally {
+      setAiReviewLoading(
+        (current) => ({
+          ...current,
+          [questionKey]: false,
+        })
+      );
+    }
+  };
+
   useEffect(() => {
     setCurrentSubmission(
       submission || null
@@ -764,6 +886,10 @@ const SubmissionDetail = ({
                     questionId
                   ) || {};
 
+                const persistedQuestionId =
+                  answerDetail.questionId ||
+                  question.id;
+
                 const studentAnswer =
                   answerDetail.answer ??
                   currentSubmission
@@ -955,7 +1081,116 @@ const SubmissionDetail = ({
                         </div>
                       </div>
                     </div>
+                    {isWritten && (
+                      <div
+                        className="card border-secondary mt-4"
+                        data-testid="teacher-manual-grade"
+                      >
+                        <div className="card-body">
+                          <h6 className="fw-bold mb-3">
+                            Manual Written-Answer Grade
+                          </h6>
 
+                          <div className="row g-3">
+                            <div className="col-md-3">
+                              <label className="form-label">
+                                Awarded points
+                              </label>
+
+                              <input
+                                type="number"
+                                min="0"
+                                max={questionPoints}
+                                step="0.5"
+                                className="form-control"
+                                value={
+                                  manualGrades[
+                                    questionId
+                                  ]?.awardedPoints ??
+                                  ""
+                                }
+                                onChange={(
+                                  event
+                                ) =>
+                                  setManualGrades(
+                                    (current) => ({
+                                      ...current,
+
+                                      [questionId]: {
+                                        ...current[
+                                          questionId
+                                        ],
+
+                                        awardedPoints:
+                                          event.target
+                                            .value,
+                                      },
+                                    })
+                                  )
+                                }
+                                data-testid="teacher-manual-points"
+                              />
+                            </div>
+
+                            <div className="col-md-7">
+                              <label className="form-label">
+                                Teacher feedback
+                              </label>
+
+                              <textarea
+                                rows="2"
+                                className="form-control"
+                                value={
+                                  manualGrades[
+                                    questionId
+                                  ]?.feedback ??
+                                  ""
+                                }
+                                onChange={(
+                                  event
+                                ) =>
+                                  setManualGrades(
+                                    (current) => ({
+                                      ...current,
+
+                                      [questionId]: {
+                                        ...current[
+                                          questionId
+                                        ],
+
+                                        feedback:
+                                          event.target
+                                            .value,
+                                      },
+                                    })
+                                  )
+                                }
+                                data-testid="teacher-manual-feedback"
+                              />
+                            </div>
+
+                            <div className="col-md-2 d-flex align-items-end">
+                              <button
+                                type="button"
+                                className="btn btn-primary w-100"
+                                disabled={loading}
+                                onClick={() =>
+                                  handleManualGrade(
+                                    persistedQuestionId,
+                                    questionPoints
+                                  )
+                                }
+                                data-testid="teacher-manual-save"
+                              >
+                                {loading
+                                  ? "Saving..."
+                                  : "Save Grade"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {isWritten &&
                       answerDetail.aiGradingStatus && (
                         <div
