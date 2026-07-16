@@ -3,50 +3,82 @@ import OpenAI from "openai";
 import AIGradingClient from "../ai/AIGradingClient.js";
 import AIGradingService from "./AIGradingService.js";
 
-
 let gradingService = null;
 
-export function getAiGradingService() {
-  if (
-    process.env.NODE_ENV === "test" &&
-    process.env.E2E_FAKE_AI_GRADING === "true"
-  ) {
-    gradingService = {
-      async gradeWrittenAnswer({
-        maxPoints,
-      }) {
-        return {
-          status: "ai-suggestion-ready",
-          awardedPoints: Math.min(
+function createFakeAiGradingService() {
+  return {
+    async gradeWrittenAnswer({
+      maxPoints,
+    }) {
+      const normalizedMaxPoints =
+        Math.max(
+          0,
+          Number(maxPoints) || 0
+        );
+
+      return {
+        status:
+          "ai-suggestion-ready",
+
+        awardedPoints:
+          Math.min(
             8,
-            Number(maxPoints) || 0
+            normalizedMaxPoints
           ),
-          maxPoints:
-            Number(maxPoints) || 0,
-          confidence: 0.88,
-          feedback:
-            "Good answer, but ordering and connection behavior were not fully explained.",
-          strengths: [
-            "Correctly identified reliability",
-          ],
-          missingConcepts: [
-            "Packet ordering",
-            "Connection-oriented versus connectionless behavior",
-          ],
-          requiresTeacherReview: true,
-        };
-      },
-    };
 
-    return gradingService;
-  }
+        maxPoints:
+          normalizedMaxPoints,
 
+        confidence:
+          0.88,
+
+        feedback:
+          "Good answer, but ordering and connection behavior were not fully explained.",
+
+        strengths: [
+          "Correctly identified reliability",
+        ],
+
+        missingConcepts: [
+          "Packet ordering",
+          "Connection-oriented versus connectionless behavior",
+        ],
+
+        requiresTeacherReview:
+          true,
+      };
+    },
+  };
+}
+
+export function getAiGradingService() {
+  /*
+   * Return the existing instance first.
+   * This preserves singleton behavior for both
+   * the fake and real grading services.
+   */
   if (gradingService) {
     return gradingService;
   }
 
+  const fakeGradingEnabled =
+    process.env.NODE_ENV ===
+      "test" &&
+    process.env
+      .E2E_FAKE_AI_GRADING ===
+      "true";
+
+  if (fakeGradingEnabled) {
+    gradingService =
+      createFakeAiGradingService();
+
+    return gradingService;
+  }
+
   const apiKey =
-    process.env.OPENROUTER_API_KEY;
+    process.env
+      .OPENROUTER_API_KEY
+      ?.trim();
 
   if (!apiKey) {
     return null;
@@ -57,17 +89,15 @@ export function getAiGradingService() {
       apiKey,
 
       baseURL:
-        process.env.OPENROUTER_BASE_URL ||
+        process.env
+          .OPENROUTER_BASE_URL ||
         "https://openrouter.ai/api/v1",
 
       defaultHeaders: {
-        /*
-         * These headers are optional but recommended
-         * by OpenRouter for identifying applications.
-         */
         "HTTP-Referer":
           process.env.APP_URL ||
-          process.env.FRONTEND_URL ||
+          process.env
+            .FRONTEND_URL ||
           "http://localhost:5173",
 
         "X-Title":

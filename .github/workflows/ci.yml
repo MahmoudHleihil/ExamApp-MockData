@@ -77,7 +77,6 @@ jobs:
       MCP_AUDIT_RETENTION_DAYS: "90"
 
       OPENROUTER_API_KEY: test-placeholder-key
-      E2E_FAKE_AI_GRADING: "true"
 
     defaults:
       run:

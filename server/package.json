@@ -38,7 +38,7 @@
     "test:ai-grading-factory": "node --test tests/aiGradingFactory.test.js",
     "test:ai-grading-queue": "node --test tests/aiGradingQueue.test.js",
     "test:written-ai-queue": "node --test tests/writtenAnswerQueueSubmission.test.js",
-    "test:integration": "node --test tests/*.test.js",
+    "test:integration": "node --test --test-concurrency=1 tests/*.test.js",
     "init-db": "node scripts/initDb.js",
     "seed-db": "node scripts/seedDb.js",
     "get-exam": "node testGetExam.js",
