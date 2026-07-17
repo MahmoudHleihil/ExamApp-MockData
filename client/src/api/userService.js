@@ -18,30 +18,10 @@ export const userService = {
   login: async (email, password) => {
     if (!API_CONFIG.useMock) {
       const response = await fetch(`${API_CONFIG.baseUrl}/users/login`, getFetchConfig('POST', { email, password }));
-
-      const data = await response.json();
-
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || 'Login failed');
       }
-
-      if (!data.token) {
-        throw new Error(
-          "Login succeeded but no token was returned"
-        );
-      }
-      
-      localStorage.setItem(
-        "etest_token",
-        data.token
-      );
-
-      localStorage.setItem(
-        "etest_user",
-        JSON.stringify(data.user)
-      );
-
       return await response.json();
     }
 
