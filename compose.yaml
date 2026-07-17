@@ -42,7 +42,7 @@ services:
 
       DATABASE_URL: postgres://${POSTGRES_USER:-exam_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-exam_app}
 
-      FRONTEND_URL: http://localhost:${APP_PORT:-8080}
+      FRONTEND_URL: https://exam-app-client.onrender.com
 
       JWT_SECRET: ${JWT_SECRET}
       COOKIE_SECRET: ${COOKIE_SECRET}
