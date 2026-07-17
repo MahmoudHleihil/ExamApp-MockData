@@ -67,6 +67,10 @@ app.use(
     },
 
     credentials: true,
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
   })
 );
 app.use(express.json());
