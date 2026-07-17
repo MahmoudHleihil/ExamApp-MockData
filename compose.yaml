@@ -59,8 +59,7 @@ services:
       REDIS_URL: redis://redis:6379
       AI_GRADING_QUEUE_NAME: ai-written-grading
       
-      SEED_ON_START:
-      true
+      SEED_ON_START: true
 
     depends_on:
       postgres:
