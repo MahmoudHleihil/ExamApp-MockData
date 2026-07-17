@@ -67,7 +67,7 @@ services:
         value: Exam App
 
       - key: FRONTEND_URL
-        value: https://exam-app-client.onrender.com/
+        value: https://exam-app-client.onrender.com
 
       - key: APP_URL
         sync: false
