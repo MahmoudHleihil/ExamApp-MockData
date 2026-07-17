@@ -1,12 +1,9 @@
 #!/bin/sh
+
 set -e
 
-mkdir -p \
-  /app/uploads/course-materials \
-  /app/outputs
+echo "Running database migrations..."
+npm run migrate
 
-chown -R appuser:appgroup \
-  /app/uploads \
-  /app/outputs
-
-exec su-exec appuser "$@"
+echo "Starting Exam App API..."
+exec node server.js

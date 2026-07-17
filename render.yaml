@@ -17,8 +17,8 @@ services:
 
     # Free web services do not support paid pre-deploy commands,
     # so run the idempotent migrations before starting Node.
-    dockerCommand: sh -c "npm run migrate && node server.js"
-
+    # dockerCommand: /bin/sh -c 'npm run migrate && node server.js'
+    
     # Runs once after the service's first successful deployment.
     initialDeployHook: npm run seed
 
