@@ -125,6 +125,16 @@ router.get(
 );
 
 router.put(
+  "/submissions/:submissionId/answers/:questionId/grade",
+  authenticate,
+  authorize(
+    "Teacher",
+    "Admin"
+  ),
+  ExamController.gradeWrittenAnswer
+);
+
+router.put(
   "/submissions/:id",
   authenticate,
   authorize("Teacher", "Admin"),
@@ -144,6 +154,13 @@ router.get(
   authenticate,
   authorize("Student"),
   ExamController.getStudentSubmissionReview
+);
+
+router.put(
+  "/submissions/:submissionId/answers/:questionId/ai-review",
+  authenticate,
+  authorize("Teacher", "Admin"),
+  ExamController.reviewAiGradingSuggestion
 );
 
 router.get(

@@ -629,29 +629,7 @@ test.describe(
 
           const updateResponse =
             await updateResponsePromise;
-const updateText =
-  await updateResponse.text();
 
-console.log(
-  "Edit response:",
-  updateResponse.status(),
-  updateText
-);
-
-const updateBody =
-  updateText
-    ? JSON.parse(updateText)
-    : {};
-
-const updatedExam =
-  updateBody?.exam ||
-  updateBody?.data ||
-  updateBody;
-
-expect(
-  updatedExam.title,
-  `The backend returned the wrong updated title: ${updateText}`
-).toBe(updatedTitle);
           const responseText =
             await updateResponse
               .text()

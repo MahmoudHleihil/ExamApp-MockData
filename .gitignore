@@ -35,3 +35,6 @@ desktop.ini
 playwright-report/
 test-results/
 playwright/.auth/
+
+.env.docker
+postgres-data
