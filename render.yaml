@@ -1,0 +1,82 @@
+services:
+  - type: keyvalue
+    name: exam-app-redis
+    region: frankfurt
+    plan: free
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+
+  - type: web
+    name: exam-app-api
+    runtime: docker
+    region: frankfurt
+    plan: free
+
+    dockerContext: ./server
+    dockerfilePath: ./server/Dockerfile
+
+    # Free web services do not support paid pre-deploy commands,
+    # so run the idempotent migrations before starting Node.
+    dockerCommand: sh -c "npm run migrate && node server.js"
+
+    # Runs once after the service's first successful deployment.
+    initialDeployHook: npm run seed
+
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      - key: HOST
+        value: 0.0.0.0
+
+      - key: DATABASE_URL
+        fromDatabase:
+          name: exam-app-db
+          property: connectionString
+
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: exam-app-redis
+          property: connectionString
+
+      - key: AI_GRADING_QUEUE_NAME
+        value: ai-written-grading
+
+      - key: JWT_SECRET
+        generateValue: true
+
+      - key: COOKIE_SECRET
+        generateValue: true
+
+      - key: OPENROUTER_API_KEY
+        sync: false
+
+      - key: OPENROUTER_BASE_URL
+        value: https://openrouter.ai/api/v1
+
+      - key: OPENROUTER_MODEL
+        value: openai/gpt-4.1-mini
+
+      - key: AI_CHAT_MAX_TOKENS
+        value: "2000"
+
+      - key: APP_NAME
+        value: Exam App
+
+      - key: FRONTEND_URL
+        sync: false
+
+      - key: APP_URL
+        sync: false
+
+databases:
+  - name: exam-app-db
+    region: frankfurt
+    plan: free
+    databaseName: exam_app
+    user: exam_user
+    postgresMajorVersion: "17"
+    ipAllowList: []

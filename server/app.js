@@ -22,6 +22,10 @@ app.set("trust proxy", 1);
 
 const PORT = process.env.PORT || 5000;
 
+const HOST =
+  process.env.HOST ||
+  "0.0.0.0";
+
 // Security Middleware
 app.use(helmet({
   contentSecurityPolicy: {
@@ -152,8 +156,8 @@ async function startServer() {
       connectedAt: database.connected_at,
     });
 
-    const server = app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+    const server = app.listen(PORT, HOST, () => {
+      console.log(`Server is running on ${HOST}:${PORT}`);
     });
 
     const shutdown = async (signal) => {
