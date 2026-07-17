@@ -83,7 +83,7 @@ services:
 
     envVars:
       - key: VITE_API_BASE_URL
-        value: hhttps://exam-app-api-m8o8.onrender.com/api
+        value: https://exam-app-api-m8o8.onrender.com/api
 
 databases:
   - name: exam-app-db
