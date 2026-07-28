@@ -21,6 +21,43 @@
       ],
       "program": "${workspaceFolder}/server/index.js",
       "console": "integratedTerminal"
+    },
+    {
+        "name": "Attach",
+
+        "type": "node",
+
+        "request": "attach",
+
+        "port": 9229
+    },
+    {
+      "name": "Attach: Docker Server",
+      "type": "node",
+      "request": "attach",
+      "address": "localhost",
+      "port": 9229,
+      "localRoot": "${workspaceFolder}/server",
+      "remoteRoot": "/app",
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**"
+      ]
+    },
+    {
+      "name": "Attach: Docker AI Worker",
+      "type": "node",
+      "request": "attach",
+      "address": "localhost",
+      "port": 9230,
+      "localRoot": "${workspaceFolder}/services/ai-worker",
+      "remoteRoot": "/app",
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**"
+      ]
     }
   ],
   "compounds": [
@@ -30,6 +67,14 @@
         "Debug Express Server",
         "Debug React Client (Chrome)"
       ]
+    },
+    {
+      "name": "Debug Exam App Backend",
+      "configurations": [
+        "Attach: Docker Server",
+        "Attach: Docker AI Worker"
+      ],
+      "stopAll": true
     }
   ]
 }

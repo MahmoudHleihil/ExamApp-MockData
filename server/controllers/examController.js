@@ -247,7 +247,7 @@ export const getStudentSubmissions =
     try {
       const submissions =
         await ExamService
-          .getStudentSubmissions(
+          .getMySubmissions(
             req.user
           );
 

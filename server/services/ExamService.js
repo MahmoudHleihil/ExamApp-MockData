@@ -351,13 +351,16 @@ class ExamService {
     user,
     dependencies = {}
     ) {
-    const aiGradingService =
-        Object.prototype.hasOwnProperty.call(
+    const hasInjectedAiGradingService =
+    Object.prototype.hasOwnProperty.call(
         dependencies,
         "aiGradingService"
-        )
+    );
+
+    const injectedAiGradingService =
+    hasInjectedAiGradingService
         ? dependencies.aiGradingService
-        : getAiGradingService();
+        : undefined;
 
     const exam =
         await ExamRepository.findById(
@@ -572,6 +575,236 @@ class ExamService {
                 .releaseScoresImmediately
             ),
         });
+
+        if (hasWrittenQuestions) {
+        const writtenQuestions =
+            exam.questions.filter(
+            (question) =>
+                question.type ===
+                "written"
+            );
+
+        for (const question of writtenQuestions) {
+            const studentAnswer =
+            String(
+                answers[question.id] ??
+                ""
+            ).trim();
+
+            /*
+            * Integration and unit tests may inject
+            * a deterministic grading service.
+            */
+            if (hasInjectedAiGradingService) {
+            if (!injectedAiGradingService) {
+                continue;
+            }
+
+            try {
+                const suggestion =
+                await injectedAiGradingService
+                    .gradeWrittenAnswer({
+                    question:
+                        question.text ||
+                        question.question ||
+                        "",
+
+                    referenceAnswer:
+                        question.correctAnswer ||
+                        "",
+
+                    rubric:
+                        question.sourceEvidence ||
+                        question.rubric ||
+                        "",
+
+                    studentAnswer,
+
+                    maxPoints:
+                        Number(
+                        question.points
+                        ) || 0,
+                    });
+
+                await SubmissionRepository
+                .updateAiGradingSuggestion(
+                    createdSubmission.id,
+                    question.id,
+                    suggestion
+                );
+            } catch (gradingError) {
+                logger.error(
+                "Injected written-answer grading failed",
+                {
+                    submissionId:
+                    createdSubmission.id,
+
+                    questionId:
+                    question.id,
+
+                    error:
+                    gradingError?.message ||
+                    "Unknown grading error",
+                }
+                );
+
+                await SubmissionRepository
+                .updateAiGradingSuggestion(
+                    createdSubmission.id,
+                    question.id,
+                    {
+                    status:
+                        "ai-grading-failed",
+
+                    awardedPoints: null,
+                    confidence: null,
+
+                    feedback:
+                        "AI grading is currently unavailable. Manual teacher review is required.",
+
+                    strengths: [],
+                    missingConcepts: [],
+                    }
+                )
+                .catch(
+                    (persistenceError) => {
+                    logger.error(
+                        "Failed to persist injected grading failure",
+                        {
+                        submissionId:
+                            createdSubmission.id,
+
+                        questionId:
+                            question.id,
+
+                        error:
+                            persistenceError
+                            ?.message,
+                        }
+                    );
+                    }
+                );
+            }
+
+            continue;
+            }
+
+            /*
+            * Production path: enqueue the work for
+            * the independent AI worker.
+            */
+            try {
+            const job =
+                await enqueueWrittenAnswerGrading({
+                submissionId:
+                    createdSubmission.id,
+
+                questionId:
+                    question.id,
+
+                question:
+                    question.text ||
+                    question.question ||
+                    "",
+
+                referenceAnswer:
+                    question.correctAnswer ||
+                    "",
+
+                rubric:
+                    question.sourceEvidence ||
+                    question.rubric ||
+                    "",
+
+                studentAnswer,
+
+                maxPoints:
+                    Number(
+                    question.points
+                    ) || 0,
+                });
+
+            if (!job) {
+                logger.warn(
+                "AI grading queue is disabled",
+                {
+                    submissionId:
+                    createdSubmission.id,
+
+                    questionId:
+                    question.id,
+                }
+                );
+            } else {
+                logger.info(
+                "Written-answer grading job queued",
+                {
+                    jobId:
+                    job.id,
+
+                    submissionId:
+                    createdSubmission.id,
+
+                    questionId:
+                    question.id,
+                }
+                );
+            }
+            } catch (queueError) {
+            logger.error(
+                "Failed to enqueue written-answer grading",
+                {
+                submissionId:
+                    createdSubmission.id,
+
+                questionId:
+                    question.id,
+
+                error:
+                    queueError?.message ||
+                    "Unknown queue error",
+                }
+            );
+
+            await SubmissionRepository
+                .updateAiGradingSuggestion(
+                createdSubmission.id,
+                question.id,
+                {
+                    status:
+                    "ai-grading-failed",
+
+                    awardedPoints: null,
+                    confidence: null,
+
+                    feedback:
+                    "Automated grading could not be scheduled. Manual teacher review is required.",
+
+                    strengths: [],
+                    missingConcepts: [],
+                }
+                )
+                .catch(
+                (persistenceError) => {
+                    logger.error(
+                    "Failed to persist AI queue failure",
+                    {
+                        submissionId:
+                        createdSubmission.id,
+
+                        questionId:
+                        question.id,
+
+                        error:
+                        persistenceError
+                            ?.message,
+                    }
+                    );
+                }
+                );
+            }
+        }
+        }
     } catch (error) {
         if (
         error?.code ===
@@ -598,178 +831,178 @@ class ExamService {
     * this point. AI failure must therefore never
     * fail or roll back the student's submission.
     */
-    if (
-        hasWrittenQuestions &&
-        aiGradingService
-    ) {
-        const writtenQuestions =
-        exam.questions.filter(
-            (question) =>
-            question.type ===
-            "written"
-        );
+    // if (
+    //     hasWrittenQuestions &&
+    //     injectedAiGradingService
+    // ) {
+    //     const writtenQuestions =
+    //     exam.questions.filter(
+    //         (question) =>
+    //         question.type ===
+    //         "written"
+    //     );
 
-        for (
-        const question
-        of writtenQuestions
-        ) {
-        try {
-            const studentAnswer =
-            answers[
-                question.id
-            ];
+    //     for (
+    //     const question
+    //     of writtenQuestions
+    //     ) {
+    //     try {
+    //         const studentAnswer =
+    //         answers[
+    //             question.id
+    //         ];
 
-            const normalizedStudentAnswer =
-            String(
-                studentAnswer ??
-                ""
-            ).trim();
+    //         const normalizedStudentAnswer =
+    //         String(
+    //             studentAnswer ??
+    //             ""
+    //         ).trim();
 
-            if (!normalizedStudentAnswer) {
-            await SubmissionRepository
-                .updateAiGradingSuggestion(
-                createdSubmission.id,
-                question.id,
-                {
-                    status:
-                    "ai-suggestion-ready",
+    //         if (!normalizedStudentAnswer) {
+    //         await SubmissionRepository
+    //             .updateAiGradingSuggestion(
+    //             createdSubmission.id,
+    //             question.id,
+    //             {
+    //                 status:
+    //                 "ai-suggestion-ready",
 
-                    awardedPoints: 0,
-                    confidence: 1,
+    //                 awardedPoints: 0,
+    //                 confidence: 1,
 
-                    feedback:
-                    "No answer was provided.",
+    //                 feedback:
+    //                 "No answer was provided.",
 
-                    strengths: [],
+    //                 strengths: [],
 
-                    missingConcepts: [
-                    "A written response was not provided.",
-                    ],
-                }
-                );
+    //                 missingConcepts: [
+    //                 "A written response was not provided.",
+    //                 ],
+    //             }
+    //             );
 
-            continue;
-            }
+    //         continue;
+    //         }
 
-            const suggestion =
-            await aiGradingService
-                .gradeWrittenAnswer({
-                question:
-                    question.text ||
-                    question.question ||
-                    "",
+    //         const suggestion =
+    //         await injectedAiGradingService
+    //             .gradeWrittenAnswer({
+    //             question:
+    //                 question.text ||
+    //                 question.question ||
+    //                 "",
 
-                referenceAnswer:
-                    question.correctAnswer ||
-                    "",
+    //             referenceAnswer:
+    //                 question.correctAnswer ||
+    //                 "",
 
-                rubric:
-                    question
-                    .sourceEvidence ||
-                    question.rubric ||
-                    "",
+    //             rubric:
+    //                 question
+    //                 .sourceEvidence ||
+    //                 question.rubric ||
+    //                 "",
 
-                studentAnswer:
-                    normalizedStudentAnswer,
+    //             studentAnswer:
+    //                 normalizedStudentAnswer,
 
-                maxPoints:
-                    Number(
-                    question.points
-                    ) || 0,
-                });
+    //             maxPoints:
+    //                 Number(
+    //                 question.points
+    //                 ) || 0,
+    //             });
 
-                const allowedStatuses =
-                new Set([
-                    "ai-suggestion-ready",
-                    "ai-grading-failed",
-                ]);
+    //             const allowedStatuses =
+    //             new Set([
+    //                 "ai-suggestion-ready",
+    //                 "ai-grading-failed",
+    //             ]);
 
-                const normalizedSuggestion = {
-                ...suggestion,
+    //             const normalizedSuggestion = {
+    //             ...suggestion,
 
-                status:
-                    allowedStatuses.has(
-                    suggestion?.status
-                    )
-                    ? suggestion.status
-                    : "ai-suggestion-ready",
-                };
+    //             status:
+    //                 allowedStatuses.has(
+    //                 suggestion?.status
+    //                 )
+    //                 ? suggestion.status
+    //                 : "ai-suggestion-ready",
+    //             };
 
-            await SubmissionRepository
-            .updateAiGradingSuggestion(
-                createdSubmission.id,
-                question.id,
-                normalizedSuggestion
-            );
-        } catch (
-            gradingError
-        ) {
-            console.error(
-            "Written-answer AI grading failed",
-            {
-                submissionId:
-                createdSubmission.id,
+    //         await SubmissionRepository
+    //         .updateAiGradingSuggestion(
+    //             createdSubmission.id,
+    //             question.id,
+    //             normalizedSuggestion
+    //         );
+    //     } catch (
+    //         gradingError
+    //     ) {
+    //         console.error(
+    //         "Written-answer AI grading failed",
+    //         {
+    //             submissionId:
+    //             createdSubmission.id,
 
-                questionId:
-                question.id,
+    //             questionId:
+    //             question.id,
 
-                error:
-                gradingError
-                    ?.message ||
-                "Unknown AI grading error",
-            }
-            );
+    //             error:
+    //             gradingError
+    //                 ?.message ||
+    //             "Unknown AI grading error",
+    //         }
+    //         );
 
-            /*
-            * Persist a visible failure state so the
-            * teacher knows manual review is required.
-            */
-            try {
-            await SubmissionRepository
-                .updateAiGradingSuggestion(
-                createdSubmission.id,
-                question.id,
-                {
-                    status:
-                    "ai-grading-failed",
+    //         /*
+    //         * Persist a visible failure state so the
+    //         * teacher knows manual review is required.
+    //         */
+    //         try {
+    //         await SubmissionRepository
+    //             .updateAiGradingSuggestion(
+    //             createdSubmission.id,
+    //             question.id,
+    //             {
+    //                 status:
+    //                 "ai-grading-failed",
 
-                    awardedPoints:
-                    null,
+    //                 awardedPoints:
+    //                 null,
 
-                    confidence:
-                    null,
+    //                 confidence:
+    //                 null,
 
-                    feedback:
-                    "AI grading is currently unavailable. Manual teacher review is required.",
+    //                 feedback:
+    //                 "AI grading is currently unavailable. Manual teacher review is required.",
 
-                    strengths: [],
+    //                 strengths: [],
 
-                    missingConcepts:
-                    [],
-                }
-                );
-            } catch (
-            persistenceError
-            ) {
-            console.error(
-                "Failed to persist AI grading failure",
-                {
-                submissionId:
-                    createdSubmission.id,
+    //                 missingConcepts:
+    //                 [],
+    //             }
+    //             );
+    //         } catch (
+    //         persistenceError
+    //         ) {
+    //         console.error(
+    //             "Failed to persist AI grading failure",
+    //             {
+    //             submissionId:
+    //                 createdSubmission.id,
 
-                questionId:
-                    question.id,
+    //             questionId:
+    //                 question.id,
 
-                error:
-                    persistenceError
-                    ?.message ||
-                    "Unknown persistence error",
-                }
-            );
-            }
-        }
-        }
-    }
+    //             error:
+    //                 persistenceError
+    //                 ?.message ||
+    //                 "Unknown persistence error",
+    //             }
+    //         );
+    //         }
+    //     }
+    //     }
+    // }
 
     /*
     * Reload so the caller receives any stored AI
