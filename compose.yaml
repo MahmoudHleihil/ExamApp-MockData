@@ -54,6 +54,7 @@ services:
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-4.1-mini}
       AI_CHAT_MAX_TOKENS: ${AI_CHAT_MAX_TOKENS:-2000}
+      AI_GRADING_MAX_TOKENS: ${AI_GRADING_MAX_TOKENS:-800}
       AI_GRADING_MODEL: ${AI_GRADING_MODEL:-openai/gpt-4.1-mini}
 
       APP_NAME: ${APP_NAME:-Exam App}
@@ -291,6 +292,10 @@ services:
     build:
       context: ./services/ai-worker
       dockerfile: Dockerfile
+  
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
 
     restart: unless-stopped
 
@@ -303,6 +308,7 @@ services:
 
       AI_GRADING_QUEUE_NAME: ai-written-grading
       AI_WORKER_CONCURRENCY: ${AI_WORKER_CONCURRENCY:-2}
+      AI_GRADING_MAX_TOKENS: ${AI_GRADING_MAX_TOKENS:-800}
 
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
@@ -325,6 +331,7 @@ services:
 
     networks:
       - backend
+      - ai-egress
 
 volumes:
   postgres_data:
@@ -336,3 +343,6 @@ networks:
   frontend:
   backend:
     internal: true
+    
+  ai-egress:
+    driver: bridge

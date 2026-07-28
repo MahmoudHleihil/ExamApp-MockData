@@ -120,96 +120,121 @@ const mapSubmissionAnswerRow = (
 });
 
 class SubmissionRepository {
-  mapAnswer(row) {
-    if (!row) return null;
+mapAnswer(row) {
+  return {
+    id: String(row.id),
 
-    return {
-      id: row.id,
-      submissionId: row.submission_id,
-      questionId: row.question_id,
-      answer: row.answer,
-      isCorrect: row.is_correct,
-      awardedPoints:
-        row.awarded_points === null
-          ? null
-          : Number(row.awarded_points),
-      feedback: row.feedback || "",
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
-  }
+    submissionId: row.submission_id,
+    questionId: row.question_id,
 
-  mapSubmission(row, answers = []) {
-    if (!row) return null;
+    answer: row.answer ?? "",
+    isCorrect: row.is_correct,
 
-    const answerObject = {};
-    const questionFeedback = {};
+    awardedPoints:
+      row.awarded_points === null
+        ? null
+        : Number(row.awarded_points),
 
-    for (const answer of answers) {
-      answerObject[answer.questionId] =
-        answer.answer;
+    feedback: row.feedback ?? "",
 
-      if (answer.feedback) {
-        questionFeedback[answer.questionId] =
-          answer.feedback;
-      }
-    }
+    aiAwardedPoints:
+      row.ai_awarded_points === null
+        ? null
+        : Number(row.ai_awarded_points),
 
-    return {
-      id: row.id,
+    aiConfidence:
+      row.ai_confidence === null
+        ? null
+        : Number(row.ai_confidence),
 
-      examId: row.exam_id,
-      examTitle: row.exam_title,
+    aiFeedback: row.ai_feedback ?? "",
 
-      studentId: row.student_id,
-      studentName: row.student_name,
-      studentEmail: row.student_email,
+    aiStrengths:
+      Array.isArray(row.ai_strengths)
+        ? row.ai_strengths
+        : [],
 
-      status: row.status,
+    aiMissingConcepts:
+      Array.isArray(row.ai_missing_concepts)
+        ? row.ai_missing_concepts
+        : [],
 
-      score:
-        row.score === null
-          ? null
-          : Number(row.score),
+    aiGradingStatus:
+      row.ai_grading_status ?? null,
 
-      maxScore:
-        row.max_score === null
-          ? null
-          : Number(row.max_score),
+    aiGradedAt:
+      row.ai_graded_at ?? null,
 
-      percentage:
-        row.percentage === null
-          ? null
-          : Number(row.percentage),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 
-      startedAt: row.started_at,
-      submittedAt: row.submitted_at,
-      gradedAt: row.graded_at,
+mapSubmission(row, rawAnswerRows = []) {
+  const answerDetails =
+    rawAnswerRows.map((answer) =>
+      this.mapAnswer(answer)
+    );
 
-      // Compatibility with your old mockDb shape.
-      date:
-        row.submitted_at ||
-        row.created_at,
+  const answers = Object.fromEntries(
+    answerDetails
+      .filter((answer) => answer.questionId)
+      .map((answer) => [
+        answer.questionId,
+        answer.answer,
+      ])
+  );
 
-      feedback: row.feedback || "",
+  return {
+    id: row.id,
+    examId: row.exam_id,
+    examTitle: row.exam_title,
 
-      isFeedbackVisible:
-        row.is_feedback_visible,
+    studentId: row.student_id,
+    studentName: row.student_name,
+    studentEmail: row.student_email,
 
-      isScorePublished:
-        row.is_score_published,
+    status: row.status,
 
-      gradedBy: row.graded_by,
-      graderName: row.grader_name,
+    score:
+      row.score === null
+        ? null
+        : Number(row.score),
 
-      answers: answerObject,
-      answerDetails: answers,
-      questionFeedback,
+    maxScore:
+      row.max_score === null
+        ? null
+        : Number(row.max_score),
 
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
-  }
+    percentage:
+      row.percentage === null
+        ? null
+        : Number(row.percentage),
+
+    startedAt: row.started_at,
+    submittedAt: row.submitted_at,
+    gradedAt: row.graded_at,
+
+    date:
+      row.submitted_at ??
+      row.created_at,
+
+    feedback: row.feedback ?? "",
+    isFeedbackVisible: row.is_feedback_visible,
+    isScorePublished: row.is_score_published,
+
+    gradedBy: row.graded_by,
+    graderName: row.grader_name,
+
+    answers,
+    answerDetails,
+
+    questionFeedback: {},
+
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
   
   async gradeWrittenAnswer(
     submissionId,
@@ -890,9 +915,75 @@ class SubmissionRepository {
         ),
     };
   }
+async getAnswersForSubmissions(submissionIds) {
+  if (!Array.isArray(submissionIds) || submissionIds.length === 0) {
+    return new Map();
+  }
 
-  async findAll() {
-    const result = await pool.query(`
+  const result = await pool.query(
+    `
+      SELECT *
+      FROM submission_answers
+      WHERE submission_id = ANY($1::text[])
+      ORDER BY submission_id, id
+    `,
+    [submissionIds]
+  );
+
+  const answersBySubmission = new Map();
+
+  for (const answer of result.rows) {
+    const currentAnswers =
+      answersBySubmission.get(answer.submission_id) ?? [];
+
+    currentAnswers.push(answer);
+
+    answersBySubmission.set(
+      answer.submission_id,
+      currentAnswers
+    );
+  }
+
+  return answersBySubmission;
+}
+async findAll() {
+  console.log("SubmissionRepository.findAll called");
+  const result = await pool.query(`
+    SELECT
+      s.*,
+      e.title AS exam_title,
+      student.full_name AS student_name,
+      student.email AS student_email,
+      grader.full_name AS grader_name
+    FROM exam_submissions s
+    JOIN exams e
+      ON e.id = s.exam_id
+    JOIN users student
+      ON student.id = s.student_id
+    LEFT JOIN users grader
+      ON grader.id = s.graded_by
+    ORDER BY
+      s.submitted_at DESC NULLS LAST,
+      s.created_at DESC
+  `);
+
+  const submissionIds = result.rows.map(
+    (row) => row.id
+  );
+
+  const answersBySubmission =
+    await this.getAnswersForSubmissions(submissionIds);
+
+  return result.rows.map((row) =>
+    this.mapSubmission(
+      row,
+      answersBySubmission.get(row.id) ?? []
+    )
+  );
+}
+async findByStudentId(studentId) {
+  const result = await pool.query(
+    `
       SELECT
         s.*,
         e.title AS exam_title,
@@ -906,97 +997,67 @@ class SubmissionRepository {
         ON student.id = s.student_id
       LEFT JOIN users grader
         ON grader.id = s.graded_by
+      WHERE s.student_id = $1
       ORDER BY
         s.submitted_at DESC NULLS LAST,
         s.created_at DESC
-    `);
+    `,
+    [studentId]
+  );
 
-    return Promise.all(
-      result.rows.map(async (row) => {
-        const answers =
-          await this.getAnswers(row.id);
+  const submissionIds = result.rows.map(
+    (row) => row.id
+  );
 
-        return this.mapSubmission(
-          row,
-          answers
-        );
-      })
-    );
-  }
+  const answersBySubmission =
+    await this.getAnswersForSubmissions(submissionIds);
 
-  async findByStudentId(studentId) {
-    const result = await pool.query(
-      `
-        SELECT
-          s.*,
-          e.title AS exam_title,
-          student.full_name AS student_name,
-          student.email AS student_email,
-          grader.full_name AS grader_name
-        FROM exam_submissions s
-        JOIN exams e
-          ON e.id = s.exam_id
-        JOIN users student
-          ON student.id = s.student_id
-        LEFT JOIN users grader
-          ON grader.id = s.graded_by
-        WHERE s.student_id = $1
-        ORDER BY
-          s.submitted_at DESC NULLS LAST,
-          s.created_at DESC
-      `,
-      [studentId]
-    );
+  return result.rows.map((row) =>
+    this.mapSubmission(
+      row,
+      answersBySubmission.get(row.id) ?? []
+    )
+  );
+}
 
-    return Promise.all(
-      result.rows.map(async (row) => {
-        const answers =
-          await this.getAnswers(row.id);
+async findByExam(examId) {
+  const result = await pool.query(
+    `
+      SELECT
+        s.*,
+        e.title AS exam_title,
+        student.full_name AS student_name,
+        student.email AS student_email,
+        grader.full_name AS grader_name
+      FROM exam_submissions s
+      JOIN exams e
+        ON e.id = s.exam_id
+      JOIN users student
+        ON student.id = s.student_id
+      LEFT JOIN users grader
+        ON grader.id = s.graded_by
+      WHERE s.exam_id = $1
+      ORDER BY
+        s.submitted_at DESC NULLS LAST,
+        student.full_name ASC
+    `,
+    [examId]
+  );
 
-        return this.mapSubmission(
-          row,
-          answers
-        );
-      })
-    );
-  }
+  const submissionIds = result.rows.map(
+    (row) => row.id
+  );
 
-  async findByExam(examId) {
-    const result = await pool.query(
-      `
-        SELECT
-          s.*,
-          e.title AS exam_title,
-          student.full_name AS student_name,
-          student.email AS student_email,
-          grader.full_name AS grader_name
-        FROM exam_submissions s
-        JOIN exams e
-          ON e.id = s.exam_id
-        JOIN users student
-          ON student.id = s.student_id
-        LEFT JOIN users grader
-          ON grader.id = s.graded_by
-        WHERE s.exam_id = $1
-        ORDER BY
-          s.submitted_at DESC NULLS LAST,
-          student.full_name ASC
-      `,
-      [examId]
-    );
+  const answersBySubmission =
+    await this.getAnswersForSubmissions(submissionIds);
 
-    return Promise.all(
-      result.rows.map(async (row) => {
-        const answers =
-          await this.getAnswers(row.id);
-
-        return this.mapSubmission(
-          row,
-          answers
-        );
-      })
-    );
-  }
+  return result.rows.map((row) =>
+    this.mapSubmission(
+      row,
+      answersBySubmission.get(row.id) ?? []
+    )
+  );
+}
 
   async findByStudentAndExam(
     studentId,

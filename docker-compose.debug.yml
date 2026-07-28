@@ -1,0 +1,25 @@
+services:
+  server:
+    command:
+      - node
+      - --inspect=0.0.0.0:9229
+      - server.js
+
+    ports:
+      - "9229:9229"
+
+    environment:
+      NODE_ENV: development
+
+  ai-worker:
+    command:
+      - node
+      - --inspect=0.0.0.0:9230
+      - src/index.js
+
+    ports:
+      - "9230:9230"
+
+    environment:
+      NODE_ENV: development
+      AI_WORKER_CONCURRENCY: 1
