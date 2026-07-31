@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, } from 'react';
 import { userService } from '../api/userService';
 import { examService } from '../api/examService';
 import { notificationService } from '../api/notificationService';
@@ -8,6 +8,7 @@ import FloatingFileUpload from "./documents/FloatingFileUpload";
 const AdminDashboard = ({ user }) => {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
+  const [exams, setExams] = useState([]);
   const [recentExams, setRecentExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'users', 'approvals', 'admins'
@@ -27,18 +28,86 @@ const AdminDashboard = ({ user }) => {
   // טעינת ניתונים מ db 
   const fetchData = async () => {
     setLoading(true);
+
     try {
-      const [statsData, usersData, examsData] = await Promise.all([
+      const [
+        statsResponse,
+        usersResponse,
+        examsResponse,
+      ] = await Promise.all([
         userService.getSystemStats(),
         userService.getAllUsers(),
-        examService.getAllExams()
+        examService.getAllExams(),
       ]);
-      setStats(statsData);
-      setUsers(usersData);
-      // חמישת המבחנים שנוסיפו לאחרונה
-      setRecentExams(examsData.slice(-5).reverse());
-    } catch (err) {
-      console.error(err);
+
+      const normalizedStats =
+        statsResponse?.data ||
+        statsResponse ||
+        {};
+
+      const normalizedUsers =
+        Array.isArray(usersResponse)
+          ? usersResponse
+          : Array.isArray(
+              usersResponse?.users
+            )
+            ? usersResponse.users
+            : Array.isArray(
+                usersResponse?.data
+              )
+              ? usersResponse.data
+              : [];
+
+      const normalizedExams =
+        Array.isArray(examsResponse)
+          ? examsResponse
+          : Array.isArray(
+              examsResponse?.exams
+            )
+            ? examsResponse.exams
+            : Array.isArray(
+                examsResponse?.data
+              )
+              ? examsResponse.data
+              : [];
+
+      setStats(normalizedStats);
+      setUsers(normalizedUsers);
+      setExams(normalizedExams);
+
+      const sortedExams = [
+        ...normalizedExams,
+      ].sort((first, second) => {
+        const firstDate =
+          new Date(
+            first.createdAt ||
+            first.created_at ||
+            0
+          ).getTime();
+
+        const secondDate =
+          new Date(
+            second.createdAt ||
+            second.created_at ||
+            0
+          ).getTime();
+
+        return secondDate - firstDate;
+      });
+
+      setRecentExams(
+        sortedExams.slice(0, 5)
+      );
+    } catch (error) {
+      console.error(
+        "Failed to load admin data:",
+        error
+      );
+
+      setStats({});
+      setUsers([]);
+      setExams([]);
+      setRecentExams([]);
     } finally {
       setLoading(false);
     }
@@ -48,6 +117,150 @@ const AdminDashboard = ({ user }) => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const adminStats = useMemo(() => {
+    const userList =
+      Array.isArray(users)
+        ? users
+        : [];
+
+    const examList =
+      Array.isArray(exams)
+        ? exams
+        : [];
+
+    const roleCount = (role) =>
+      userList.filter(
+        (account) =>
+          String(
+            account.role
+          ).toLowerCase() ===
+          role.toLowerCase()
+      ).length;
+
+    const statusCount = (status) =>
+      userList.filter(
+        (account) =>
+          String(
+            account.status
+          ).toLowerCase() ===
+          status.toLowerCase()
+      ).length;
+
+    const publishedExams =
+      examList.filter(
+        (exam) =>
+          exam.isPublished === true ||
+          exam.published === true
+      );
+
+    const draftExams =
+      examList.filter(
+        (exam) =>
+          exam.isPublished !== true &&
+          exam.published !== true
+      );
+
+    const pendingTeachers =
+      userList.filter(
+        (account) =>
+          String(
+            account.role
+          ).toLowerCase() ===
+            "teacher" &&
+          String(
+            account.status
+          ).toLowerCase() ===
+            "pending"
+      );
+
+    const approvedTeachers =
+      userList.filter(
+        (account) =>
+          String(
+            account.role
+          ).toLowerCase() ===
+            "teacher" &&
+          String(
+            account.status
+          ).toLowerCase() ===
+            "active"
+      );
+
+    const totalTeacherAccounts =
+      approvedTeachers.length +
+      pendingTeachers.length;
+
+    const teacherApprovalRate =
+      totalTeacherAccounts > 0
+        ? (
+            approvedTeachers.length /
+            totalTeacherAccounts
+          ) * 100
+        : 0;
+
+    const totalQuestions =
+      examList.reduce(
+        (total, exam) =>
+          total +
+          (
+            Array.isArray(
+              exam.questions
+            )
+              ? exam.questions.length
+              : Number(
+                  exam.questionCount ??
+                  exam.question_count ??
+                  0
+                )
+          ),
+        0
+      );
+
+    return {
+      totalUsers:
+        userList.length,
+
+      teachers:
+        roleCount("Teacher"),
+
+      students:
+        roleCount("Student"),
+
+      administrators:
+        roleCount("Admin"),
+
+      activeUsers:
+        statusCount("active"),
+
+      pendingUsers:
+        statusCount("pending"),
+
+      suspendedUsers:
+        statusCount("suspended"),
+
+      totalExams:
+        examList.length,
+
+      publishedExams:
+        publishedExams.length,
+
+      draftExams:
+        draftExams.length,
+
+      totalQuestions,
+
+      pendingTeachers:
+        pendingTeachers.length,
+
+      teacherApprovalRate:
+        Number(
+          teacherApprovalRate.toFixed(
+            1
+          )
+        ),
+    };
+  }, [users, exams]);
 
   // פונקציה אסינכרונית לאשר החשבון של המורה
   const handleApprove = async (userId) => {
@@ -129,7 +342,72 @@ const AdminDashboard = ({ user }) => {
     );
   }
 
-  const pendingUsers = users.filter(u => u.status === 'pending');
+  const pendingUsers = users.filter(
+      (account) =>
+        String(
+          account.role
+        ).toLowerCase() ===
+          "teacher" &&
+        String(
+          account.status
+        ).toLowerCase() ===
+          "pending"
+  );
+
+  const AdminStatisticCard = ({
+    title,
+    value,
+    icon,
+    color = "primary",
+    description,
+  }) => (
+    <div className="col-sm-6 col-xl-3">
+      <div className="card h-100 border-0 shadow-sm rounded-4">
+        <div className="card-body p-4">
+          <div className="d-flex justify-content-between align-items-start">
+            <div>
+              <small className="text-muted text-uppercase fw-bold">
+                {title}
+              </small>
+
+              <h2
+                className={`fw-bold text-${color} mt-2 mb-1`}
+              >
+                {value}
+              </h2>
+
+              {description && (
+                <small className="text-muted">
+                  {description}
+                </small>
+              )}
+            </div>
+
+            <div
+              className={`
+                bg-${color}
+                bg-opacity-10
+                text-${color}
+                rounded-circle
+                d-flex
+                align-items-center
+                justify-content-center
+                flex-shrink-0
+              `}
+              style={{
+                width: "52px",
+                height: "52px",
+              }}
+            >
+              <i
+                className={`bi ${icon} fs-4`}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="admin-dashboard animate__animated animate__fadeIn">
@@ -146,7 +424,10 @@ const AdminDashboard = ({ user }) => {
             </div>
           </div>
           <div className="text-end">
-            <span className="badge bg-primary px-3 py-2">{stats?.totalUsers} Total Users</span>
+            <span className="badge bg-primary px-3 py-2">
+              {adminStats.totalUsers}
+              {" Total Users"}
+            </span>
           </div>
         </div>
       </div>
@@ -176,46 +457,268 @@ const AdminDashboard = ({ user }) => {
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="animate__animated animate__fadeIn">
-            <div className="row g-4 mb-4">
-              <div className="col-md-3">
-                <div className="card h-100 border-0 shadow-sm p-4 text-center">
-                  <h6 className="text-muted small text-uppercase fw-bold">Teachers</h6>
-                  <h2 className="fw-bold text-success">{stats?.roleDistribution.Teacher}</h2>
-                </div>
-              </div>
-              <div className="col-md-3">
-                <div className="card h-100 border-0 shadow-sm p-4 text-center">
-                  <h6 className="text-muted small text-uppercase fw-bold">Students</h6>
-                  <h2 className="fw-bold text-info">{stats?.roleDistribution.Student}</h2>
-                </div>
-              </div>
-              <div className="col-md-3">
-                <div className="card h-100 border-0 shadow-sm p-4 text-center">
-                  <h6 className="text-muted small text-uppercase fw-bold">Exams</h6>
-                  <h2 className="fw-bold text-primary">{stats?.totalExams}</h2>
-                </div>
-              </div>
-              <div className="col-md-3">
-                <div className="card h-100 border-0 shadow-sm p-4 text-center">
-                  <h6 className="text-muted small text-uppercase fw-bold">Waitlist</h6>
-                  <h2 className="fw-bold text-danger">{pendingUsers.length}</h2>
+          <div className="row g-4 mb-4">
+            <AdminStatisticCard
+              title="Total Users"
+              value={
+                adminStats.totalUsers
+              }
+              icon="bi-people"
+              color="primary"
+              description={`${adminStats.activeUsers} active accounts`}
+            />
+
+            <AdminStatisticCard
+              title="Teachers"
+              value={
+                adminStats.teachers
+              }
+              icon="bi-person-workspace"
+              color="success"
+              description={`${adminStats.pendingTeachers} awaiting approval`}
+            />
+
+            <AdminStatisticCard
+              title="Students"
+              value={
+                adminStats.students
+              }
+              icon="bi-mortarboard"
+              color="info"
+              description="Registered learners"
+            />
+
+            <AdminStatisticCard
+              title="Exams"
+              value={
+                adminStats.totalExams
+              }
+              icon="bi-journal-text"
+              color="warning"
+              description={`${adminStats.publishedExams} published`}
+            />
+          </div>
+          <div className="row g-4 mb-4">
+            <AdminStatisticCard
+              title="Administrators"
+              value={
+                adminStats.administrators
+              }
+              icon="bi-shield-lock"
+              color="danger"
+              description="System administrators"
+            />
+
+            <AdminStatisticCard
+              title="Draft Exams"
+              value={
+                adminStats.draftExams
+              }
+              icon="bi-pencil-square"
+              color="secondary"
+              description="Not yet published"
+            />
+
+            <AdminStatisticCard
+              title="Total Questions"
+              value={
+                adminStats.totalQuestions
+              }
+              icon="bi-question-circle"
+              color="info"
+              description="Across all exams"
+            />
+
+            <AdminStatisticCard
+              title="Approval Rate"
+              value={`${adminStats.teacherApprovalRate}%`}
+              icon="bi-person-check"
+              color="success"
+              description="Approved teacher accounts"
+            />
+          </div>
+          <div className="row g-4 mb-4">
+            <div className="col-lg-8">
+              <div className="card border-0 shadow-sm rounded-4 h-100">
+                <div className="card-body p-4">
+                  <div className="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                      <h5 className="fw-bold mb-1">
+                        System Overview
+                      </h5>
+
+                      <p className="text-muted mb-0">
+                        Account and content status
+                        across the platform.
+                      </p>
+                    </div>
+
+                    <i className="bi bi-activity fs-2 text-primary" />
+                  </div>
+
+                  <div className="row g-3">
+                    <div className="col-md-4">
+                      <div className="bg-light rounded-4 p-3 text-center">
+                        <h3 className="fw-bold text-success mb-1">
+                          {
+                            adminStats
+                              .activeUsers
+                          }
+                        </h3>
+
+                        <small className="text-muted">
+                          Active Users
+                        </small>
+                      </div>
+                    </div>
+
+                    <div className="col-md-4">
+                      <div className="bg-light rounded-4 p-3 text-center">
+                        <h3 className="fw-bold text-warning mb-1">
+                          {
+                            adminStats
+                              .pendingUsers
+                          }
+                        </h3>
+
+                        <small className="text-muted">
+                          Pending Accounts
+                        </small>
+                      </div>
+                    </div>
+
+                    <div className="col-md-4">
+                      <div className="bg-light rounded-4 p-3 text-center">
+                        <h3 className="fw-bold text-primary mb-1">
+                          {
+                            adminStats
+                              .publishedExams
+                          }
+                        </h3>
+
+                        <small className="text-muted">
+                          Published Exams
+                        </small>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="d-flex justify-content-between mb-2">
+                      <span className="fw-semibold">
+                        Teacher approval progress
+                      </span>
+
+                      <span className="text-muted">
+                        {
+                          adminStats
+                            .teacherApprovalRate
+                        }
+                        %
+                      </span>
+                    </div>
+
+                    <div
+                      className="progress"
+                      style={{
+                        height: "12px",
+                      }}
+                    >
+                      <div
+                        className="progress-bar bg-success"
+                        role="progressbar"
+                        style={{
+                          width: `${adminStats.teacherApprovalRate}%`,
+                        }}
+                        aria-valuenow={
+                          adminStats.teacherApprovalRate
+                        }
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            
+
+            <div className="col-lg-4">
+              <div className="card border-0 shadow-sm rounded-4 h-100">
+                <div className="card-body p-4">
+                  <h5 className="fw-bold mb-4">
+                    Exam Status
+                  </h5>
+
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <span>
+                      <i className="bi bi-check-circle text-success me-2" />
+                      Published
+                    </span>
+
+                    <span className="badge bg-success rounded-pill">
+                      {
+                        adminStats
+                          .publishedExams
+                      }
+                    </span>
+                  </div>
+
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <span>
+                      <i className="bi bi-pencil-square text-secondary me-2" />
+                      Drafts
+                    </span>
+
+                    <span className="badge bg-secondary rounded-pill">
+                      {
+                        adminStats
+                          .draftExams
+                      }
+                    </span>
+                  </div>
+
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span>
+                      <i className="bi bi-question-circle text-info me-2" />
+                      Questions
+                    </span>
+
+                    <span className="badge bg-info rounded-pill">
+                      {
+                        adminStats
+                          .totalQuestions
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
             <div className="card border-0 shadow-sm rounded-4">
                <div className="card-header bg-transparent border-0 pt-4 px-4"><h5 className="fw-bold">Recent System Activity</h5></div>
                <div className="card-body p-4">
                   <div className="table-responsive">
                     <table className="table table-borderless align-middle">
                       <tbody>
-                        {recentExams.map(exam => (
-                          <tr key={exam.id}>
-                            <td style={{ width: '50px' }}><div className="bg-light p-2 rounded text-primary text-center"><i className="bi bi-file-earmark-text"></i></div></td>
-                            <td><h6 className="mb-0 fw-bold">{exam.title}</h6><small className="text-muted">ID: {exam.id}</small></td>
-                            <td className="text-end"><span className="badge bg-light text-dark">{exam.questions.length} Qs</span></td>
+                        {recentExams.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan="3"
+                              className="text-center text-muted py-4"
+                            >
+                              No exams have been created
+                              yet.
+                            </td>
                           </tr>
-                        ))}
+                        ) : (
+                          recentExams.map(exam => (
+                            <tr key={exam.id}>
+                              <td style={{ width: '50px' }}><div className="bg-light p-2 rounded text-primary text-center"><i className="bi bi-file-earmark-text"></i></div></td>
+                              <td><h6 className="mb-0 fw-bold">{exam.title}</h6><small className="text-muted">ID: {exam.id}</small></td>
+                              <td className="text-end"><span className="badge bg-light text-dark">{exam.questions.length} Qs</span></td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>

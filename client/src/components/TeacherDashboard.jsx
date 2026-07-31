@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, } from 'react';
 import { Routes, Route, useNavigate, useParams, Link } from 'react-router-dom';
 import { examService } from '../api/examService';
 import ExamForm from './teacher/ExamForm';
@@ -94,6 +94,12 @@ const TeacherDashboard = ({ user }) => {
     setSubmissionsLoading(true);
     try {
       const data = await examService.getAllSubmissions();
+      
+      console.log(
+        "Teacher submissions:",
+        data
+      );
+      
       setSubmissions(data);
     } catch (error) {
       console.error("Failed to fetch submissions:", error);
@@ -319,70 +325,567 @@ const TeacherDashboard = ({ user }) => {
     setDetailExam(null);
   };
 
-  const TeacherHome = () => (
-    <div className="row g-4 mt-2 justify-content-center animate__animated animate__fadeIn">
-      <div className="col-md-4">
-        <div className="card h-100 shadow-sm border-0 text-center p-4 hover-lift transition-all">
-          <div className="card-body">
-            <div className="display-4 text-primary mb-3">
-              <i className="bi bi-plus-circle-dotted"></i>
+  const dashboardStats = useMemo(() => {
+    const examList =
+      Array.isArray(exams)
+        ? exams
+        : [];
+
+    const submissionList =
+      Array.isArray(submissions)
+        ? submissions
+        : [];
+
+    const publishedExams =
+      examList.filter(
+        (exam) =>
+          exam.isPublished === true ||
+          exam.published === true
+      );
+
+    const draftExams =
+      examList.filter(
+        (exam) =>
+          exam.isPublished !== true &&
+          exam.published !== true
+      );
+
+    const gradedSubmissions =
+      submissionList.filter(
+        (submission) =>
+          submission.status === "graded" ||
+          (submission.score !== null &&
+          submission.score !== undefined)
+      );
+
+    const pendingSubmissions =
+      submissionList.filter(
+        (submission) =>
+          ![
+            "graded",
+          ].includes(
+            submission.status
+          )
+      );
+
+    const publishedScores =
+      submissionList.filter(
+        (submission) =>
+          submission.isScorePublished === true
+      );
+
+    const validPercentages =
+      submissionList
+        .map((submission) =>
+          Number(
+            submission.percentage
+          )
+        )
+        .filter(
+          (value) =>
+            Number.isFinite(value)
+        );
+
+    const averageScore =
+      validPercentages.length > 0
+        ? validPercentages.reduce(
+            (sum, value) =>
+              sum + value,
+            0
+          ) /
+          validPercentages.length
+        : 0;
+
+    const highestScore =
+      validPercentages.length > 0
+        ? Math.max(
+            ...validPercentages
+          )
+        : 0;
+
+    const passingSubmissions =
+      submissionList.filter(
+        (submission) => {
+          const percentage =
+            Number(
+              submission.percentage
+            );
+
+          if (
+            !Number.isFinite(
+              percentage
+            )
+          ) {
+            return false;
+          }
+
+          const exam =
+            examList.find(
+              (item) =>
+                String(item.id) ===
+                String(
+                  submission.examId
+                )
+            );
+
+          const passingScore =
+            Number(
+              exam?.passingScore ??
+              60
+            );
+
+          return (
+            percentage >= passingScore
+          );
+        }
+      );
+
+    const gradedCount =
+      gradedSubmissions.length;
+
+    const passRate =
+      gradedCount > 0
+        ? (
+            passingSubmissions.length /
+            gradedCount
+          ) * 100
+        : 0;
+
+    const uniqueStudents =
+      new Set(
+        submissionList
+          .map(
+            (submission) =>
+              submission.studentId
+          )
+          .filter(Boolean)
+          .map(String)
+      ).size;
+
+    return {
+      totalExams:
+        examList.length,
+
+      publishedExams:
+        publishedExams.length,
+
+      draftExams:
+        draftExams.length,
+
+      totalSubmissions:
+        submissionList.length,
+
+      gradedSubmissions:
+        gradedCount,
+
+      pendingSubmissions:
+        pendingSubmissions.length,
+
+      publishedScores:
+        publishedScores.length,
+
+      averageScore:
+        Number(
+          averageScore.toFixed(1)
+        ),
+
+      highestScore:
+        Number(
+          highestScore.toFixed(1)
+        ),
+
+      passRate:
+        Number(
+          passRate.toFixed(1)
+        ),
+
+      uniqueStudents,
+    };
+  }, [
+    exams,
+    submissions,
+  ]);
+
+  const StatisticCard = ({
+    title,
+    value,
+    icon,
+    className = "primary",
+    description,
+  }) => (
+    <div className="col-sm-6 col-xl-3">
+      <div className="card h-100 border-0 shadow-sm rounded-4">
+        <div className="card-body p-4">
+          <div className="d-flex align-items-start justify-content-between">
+            <div>
+              <p className="text-muted text-uppercase small fw-bold mb-2">
+                {title}
+              </p>
+
+              <h2
+                className={`fw-bold text-${className} mb-1`}
+              >
+                {value}
+              </h2>
+
+              {description && (
+                <small className="text-muted">
+                  {description}
+                </small>
+              )}
             </div>
-            <h4 className="fw-bold">Create New Exam</h4>
-            <p className="text-muted">Design a new assessment with multiple question types.</p>
-            <button className="btn btn-primary btn-lg w-100 mt-3 fw-bold" data-testid="create-exam-button"  onClick={() => { resetToHome(); navigate('/teacher/exams/new'); }}>
-              Launch Creator
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="col-md-4">
-        <div className="card h-100 shadow-sm border-0 text-center p-4 hover-lift transition-all">
-          <div className="card-body">
-            <div className="display-4 text-info mb-3">
-              <i className="bi bi-collection"></i>
-            </div>
-            <h4 className="fw-bold">Manage Exams</h4>
-            <p className="text-muted">View, edit, or remove your existing exams.</p>
-            <button className="btn btn-info btn-lg w-100 mt-3 text-white fw-bold" onClick={() => navigate('/teacher/exams')}>
-              View All Exams
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="col-md-4">
-        <div className="card h-100 shadow-sm border-0 text-center p-4 hover-lift transition-all">
-          <div className="card-body">
-            <div className="display-4 text-success mb-3">
-              <i className="bi bi-clipboard-check"></i>
-            </div>
-            <h4 className="fw-bold">Review Submissions</h4>
-            <p className="text-muted">Grade student answers and see performance analytics.</p>
-            <button 
-              className="btn btn-success btn-lg w-100 mt-3 text-white fw-bold" 
-              onClick={() => navigate('/teacher/submissions')}
-              disabled={submissionsLoading}
+
+            <div
+              className={`
+                rounded-circle
+                bg-${className}
+                bg-opacity-10
+                text-${className}
+                d-flex
+                align-items-center
+                justify-content-center
+                flex-shrink-0
+              `}
+              style={{
+                width: "52px",
+                height: "52px",
+              }}
             >
-              {submissionsLoading ? <span className="spinner-border spinner-border-sm"></span> : 'View Results'}
-            </button>
+              <i
+                className={`bi ${icon} fs-4`}
+              />
+            </div>
           </div>
         </div>
       </div>
-      <div className="col-md-10 mt-5">
-        <div className="card border-0 bg-light p-4 rounded-4">
-          <div className="d-flex align-items-center justify-content-around text-center">
-            <div>
-              <h2 className="fw-bold text-primary mb-0">{exams.length}</h2>
-              <small className="text-muted text-uppercase fw-bold">Active Exams</small>
+    </div>
+  );
+
+  const TeacherHome = () => (
+    <div className="animate__animated animate__fadeIn">
+      <div className="row g-4 mt-2">
+        <StatisticCard
+          title="Total Exams"
+          value={
+            loading
+              ? "..."
+              : dashboardStats.totalExams
+          }
+          icon="bi-journal-text"
+          className="primary"
+          description={`${dashboardStats.publishedExams} published`}
+        />
+
+        <StatisticCard
+          title="Submissions"
+          value={
+            submissionsLoading
+              ? "..."
+              : dashboardStats.totalSubmissions
+          }
+          icon="bi-clipboard-data"
+          className="success"
+          description={`${dashboardStats.pendingSubmissions} awaiting grading`}
+        />
+
+        <StatisticCard
+          title="Average Score"
+          value={
+            submissionsLoading
+              ? "..."
+              : `${dashboardStats.averageScore}%`
+          }
+          icon="bi-graph-up-arrow"
+          className="info"
+          description={`Highest: ${dashboardStats.highestScore}%`}
+        />
+
+        <StatisticCard
+          title="Pass Rate"
+          value={
+            submissionsLoading
+              ? "..."
+              : `${dashboardStats.passRate}%`
+          }
+          icon="bi-award"
+          className="warning"
+          description={`${dashboardStats.uniqueStudents} students`}
+        />
+      </div>
+
+      <div className="row g-4 mt-2">
+        <div className="col-lg-4">
+          <div className="card h-100 shadow-sm border-0 text-center p-4 hover-lift transition-all rounded-4">
+            <div className="card-body">
+              <div className="display-4 text-primary mb-3">
+                <i className="bi bi-plus-circle-dotted" />
+              </div>
+
+              <h4 className="fw-bold">
+                Create New Exam
+              </h4>
+
+              <p className="text-muted">
+                Design a new assessment with
+                multiple question types.
+              </p>
+
+              <button
+                className="btn btn-primary btn-lg w-100 mt-3 fw-bold"
+                data-testid="create-exam-button"
+                onClick={() => {
+                  resetToHome();
+                  navigate(
+                    "/teacher/exams/new"
+                  );
+                }}
+              >
+                Launch Creator
+              </button>
             </div>
-            <div className="vr opacity-10"></div>
-            <div>
-              <h2 className="fw-bold text-success mb-0">98%</h2>
-              <small className="text-muted text-uppercase fw-bold">Avg. Completion</small>
+          </div>
+        </div>
+
+        <div className="col-lg-4">
+          <div className="card h-100 shadow-sm border-0 text-center p-4 hover-lift transition-all rounded-4">
+            <div className="card-body">
+              <div className="display-4 text-info mb-3">
+                <i className="bi bi-collection" />
+              </div>
+
+              <h4 className="fw-bold">
+                Manage Exams
+              </h4>
+
+              <p className="text-muted">
+                {dashboardStats.publishedExams}
+                {" published and "}
+                {dashboardStats.draftExams}
+                {" draft exams."}
+              </p>
+
+              <button
+                className="btn btn-info btn-lg w-100 mt-3 text-white fw-bold"
+                onClick={() =>
+                  navigate(
+                    "/teacher/exams"
+                  )
+                }
+              >
+                View All Exams
+              </button>
             </div>
-            <div className="vr opacity-10"></div>
-            <div>
-              <h2 className="fw-bold text-warning mb-0">{mockDb.studentScores.length}</h2>
-              <small className="text-muted text-uppercase fw-bold">Recent Submissions</small>
+          </div>
+        </div>
+
+        <div className="col-lg-4">
+          <div className="card h-100 shadow-sm border-0 text-center p-4 hover-lift transition-all rounded-4">
+            <div className="card-body">
+              <div className="display-4 text-success mb-3">
+                <i className="bi bi-clipboard-check" />
+              </div>
+
+              <h4 className="fw-bold">
+                Review Submissions
+              </h4>
+
+              <p className="text-muted">
+                {dashboardStats.gradedSubmissions}
+                {" graded and "}
+                {dashboardStats.pendingSubmissions}
+                {" pending submissions."}
+              </p>
+
+              <button
+                className="btn btn-success btn-lg w-100 mt-3 text-white fw-bold"
+                onClick={() =>
+                  navigate(
+                    "/teacher/submissions"
+                  )
+                }
+                disabled={
+                  submissionsLoading
+                }
+              >
+                {submissionsLoading ? (
+                  <span className="spinner-border spinner-border-sm" />
+                ) : (
+                  "View Results"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="row g-4 mt-2">
+        <div className="col-lg-8">
+          <div className="card border-0 shadow-sm rounded-4 h-100">
+            <div className="card-body p-4">
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                  <h4 className="fw-bold mb-1">
+                    Grading Overview
+                  </h4>
+
+                  <p className="text-muted mb-0">
+                    Current submission and
+                    publication status.
+                  </p>
+                </div>
+
+                <i className="bi bi-bar-chart-line fs-2 text-primary" />
+              </div>
+
+              <div className="row g-3">
+                <div className="col-md-4">
+                  <div className="bg-light rounded-4 p-3 text-center">
+                    <h3 className="fw-bold text-success mb-1">
+                      {
+                        dashboardStats
+                          .gradedSubmissions
+                      }
+                    </h3>
+
+                    <small className="text-muted">
+                      Graded
+                    </small>
+                  </div>
+                </div>
+
+                <div className="col-md-4">
+                  <div className="bg-light rounded-4 p-3 text-center">
+                    <h3 className="fw-bold text-warning mb-1">
+                      {
+                        dashboardStats
+                          .pendingSubmissions
+                      }
+                    </h3>
+
+                    <small className="text-muted">
+                      Pending
+                    </small>
+                  </div>
+                </div>
+
+                <div className="col-md-4">
+                  <div className="bg-light rounded-4 p-3 text-center">
+                    <h3 className="fw-bold text-info mb-1">
+                      {
+                        dashboardStats
+                          .publishedScores
+                      }
+                    </h3>
+
+                    <small className="text-muted">
+                      Scores Published
+                    </small>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="d-flex justify-content-between mb-2">
+                  <span className="fw-semibold">
+                    Grading progress
+                  </span>
+
+                  <span className="text-muted">
+                    {dashboardStats.totalSubmissions >
+                    0
+                      ? Math.round(
+                          (
+                            dashboardStats
+                              .gradedSubmissions /
+                            dashboardStats
+                              .totalSubmissions
+                          ) * 100
+                        )
+                      : 0}
+                    %
+                  </span>
+                </div>
+
+                <div
+                  className="progress"
+                  style={{
+                    height: "12px",
+                  }}
+                >
+                  <div
+                    className="progress-bar"
+                    role="progressbar"
+                    style={{
+                      width: `${
+                        dashboardStats
+                          .totalSubmissions >
+                        0
+                          ? (
+                              dashboardStats
+                                .gradedSubmissions /
+                              dashboardStats
+                                .totalSubmissions
+                            ) * 100
+                          : 0
+                      }%`,
+                    }}
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-lg-4">
+          <div className="card border-0 shadow-sm rounded-4 h-100">
+            <div className="card-body p-4">
+              <h4 className="fw-bold mb-4">
+                Exam Status
+              </h4>
+
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <span>
+                  <i className="bi bi-check-circle text-success me-2" />
+                  Published
+                </span>
+
+                <span className="badge bg-success rounded-pill">
+                  {
+                    dashboardStats
+                      .publishedExams
+                  }
+                </span>
+              </div>
+
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <span>
+                  <i className="bi bi-pencil-square text-secondary me-2" />
+                  Drafts
+                </span>
+
+                <span className="badge bg-secondary rounded-pill">
+                  {
+                    dashboardStats
+                      .draftExams
+                  }
+                </span>
+              </div>
+
+              <div className="d-flex justify-content-between align-items-center">
+                <span>
+                  <i className="bi bi-people text-primary me-2" />
+                  Students
+                </span>
+
+                <span className="badge bg-primary rounded-pill">
+                  {
+                    dashboardStats
+                      .uniqueStudents
+                  }
+                </span>
+              </div>
             </div>
           </div>
         </div>
