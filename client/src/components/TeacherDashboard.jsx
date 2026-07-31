@@ -99,7 +99,7 @@ const TeacherDashboard = ({ user }) => {
         "Teacher submissions:",
         data
       );
-      
+
       setSubmissions(data);
     } catch (error) {
       console.error("Failed to fetch submissions:", error);
@@ -796,7 +796,7 @@ const TeacherDashboard = ({ user }) => {
                       ? Math.round(
                           (
                             dashboardStats
-                              .gradedSubmissions /
+                              .publishedScores /
                             dashboardStats
                               .totalSubmissions
                           ) * 100
@@ -822,7 +822,7 @@ const TeacherDashboard = ({ user }) => {
                         0
                           ? (
                               dashboardStats
-                                .gradedSubmissions /
+                                .publishedScores /
                               dashboardStats
                                 .totalSubmissions
                             ) * 100
