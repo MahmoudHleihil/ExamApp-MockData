@@ -314,13 +314,6 @@ const StudentPortal = ({ user }) => {
           submission.feedback || "",
       };
 
-      notificationService.addNotification({
-        role: "Teacher",
-        title: "New Submission",
-        message:
-          `${studentName} submitted their exam: ${exam.title}.`,
-        type: "submission",
-      });
 
       setFinalResult(result);
       setIsSubmitted(true);

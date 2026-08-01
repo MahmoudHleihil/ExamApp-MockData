@@ -45,6 +45,21 @@ function sanitizeExamForClient(exam) {
 
 class ExamService {
 
+    async getExams(user) {
+    if (!user?.id || !user?.role) {
+        const error =
+        new Error(
+            "Authentication required"
+        );
+
+        error.statusCode = 401;
+        throw error;
+    }
+
+    return ExamRepository
+        .findForUser(user);
+    }
+
     async getAllExams() {
         return await ExamRepository.findAll();
     }
@@ -575,7 +590,29 @@ class ExamService {
                 .releaseScoresImmediately
             ),
         });
+await NotificationService
+  .createForUser(
+    exam.createdBy,
+    {
+      title:
+        "New Submission",
 
+      message:
+        `${user.fullName} submitted ${exam.title}.`,
+
+      type:
+        "submission",
+
+      metadata: {
+        examId:
+          exam.id,
+
+
+        studentId:
+          user.id,
+      },
+    }
+  );
         if (hasWrittenQuestions) {
         const writtenQuestions =
             exam.questions.filter(

@@ -2,7 +2,7 @@ import ExamService from "../services/ExamService.js";
 
 export const getAllExams = async (req, res, next) => {
     try {
-        const exams = await ExamService.getAllExams();
+        const exams = await ExamService.getExams(req.user);
 
         res.status(200).json(exams);
 

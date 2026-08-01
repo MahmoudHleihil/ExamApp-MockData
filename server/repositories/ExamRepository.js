@@ -126,6 +126,47 @@ class ExamRepository {
     );
   }
 
+  async findForUser(user) {
+    if (user.role === "Admin") {
+      const result = await pool.query(`
+        SELECT *
+        FROM exams
+        ORDER BY created_at DESC
+      `);
+
+      return result.rows.map(
+        this.mapExam
+      );
+    }
+
+    if (user.role === "Teacher") {
+      const result = await pool.query(
+        `
+          SELECT *
+          FROM exams
+          WHERE created_by = $1
+          ORDER BY created_at DESC
+        `,
+        [user.id]
+      );
+
+      return result.rows.map(
+        this.mapExam
+      );
+    }
+
+    const result = await pool.query(`
+      SELECT *
+      FROM exams
+      WHERE is_published = TRUE
+      ORDER BY created_at DESC
+    `);
+
+    return result.rows.map(
+      this.mapExam
+    );
+  }
+
   async findById(id) {
     const result = await pool.query(
       `
