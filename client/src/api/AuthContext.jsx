@@ -1,39 +1,56 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { userService } from '../api/userService';
+import React, {
+  createContext,
+  useContext,
+  useState,
+} from "react";
 
-/**
- * AuthContext provides global authentication state and methods.
- * It manages user persistence in localStorage/sessionStorage and
- * provides easy access to the current user and their role.
- */
-const AuthContext = createContext(null);
+import { userService } from "../api/userService";
 
-export const AuthProvider = ({ children }) => {
-  const [authState, setAuthState] = useState(() => {
-    // Initialize state from storage on app load
-    try {
-      const savedUser = localStorage.getItem('etest_user') || sessionStorage.getItem('etest_user');
-      return {
-        user: savedUser ? JSON.parse(savedUser) : null
-      };
-    } catch (error) {
-      console.error("Failed to parse saved user:", error);
-      return { user: null };
-    }
-  });
+const AuthContext =
+  createContext(null);
 
-  /**
-   * Handle user login and persistence
-   * @param {Object} data - Data from API (contains {user} or just user)
-   * @param {boolean} rememberMe - Whether to use localStorage for persistence
-   */
-  const login = (data, rememberMe) => {
-    // Handle both mock (just user) and server (user) responses
-    // Token is now set via HttpOnly cookie by the server
-    const user = data.user || data;
+export const AuthProvider = ({
+  children,
+}) => {
+  const [authState, setAuthState] =
+    useState(() => {
+      try {
+        const savedUser =
+          localStorage.getItem(
+            "etest_user"
+          ) ||
+          sessionStorage.getItem(
+            "etest_user"
+          );
 
-    setAuthState({ user });
-    
+        return {
+          user: savedUser
+            ? JSON.parse(savedUser)
+            : null,
+        };
+      } catch (error) {
+        console.error(
+          "Failed to parse saved user:",
+          error
+        );
+
+        return {
+          user: null,
+        };
+      }
+    });
+
+  const login = (
+    data,
+    rememberMe
+  ) => {
+    const user =
+      data.user || data;
+
+    setAuthState({
+      user,
+    });
+
     localStorage.removeItem(
       "etest_user"
     );
@@ -42,34 +59,45 @@ export const AuthProvider = ({ children }) => {
       "etest_user"
     );
 
-    const storage = rememberMe ? localStorage : sessionStorage;
-    storage.setItem('etest_user', JSON.stringify(user));
+    const storage =
+      rememberMe
+        ? localStorage
+        : sessionStorage;
+
+    storage.setItem(
+      "etest_user",
+      JSON.stringify(user)
+    );
   };
 
-  /**
-   * Handle user registration persistence
-   */
-  const register = (data) => {
-    if (data) {
-      const user = data.user || data;
-      
-      setAuthState({ user });
-      sessionStorage.setItem('etest_user', JSON.stringify(user));
-    }
+  const register = async (
+    registrationData
+  ) => {
+    return userService.register(
+      registrationData
+    );
   };
 
-  /**
-   * Clean up user session on logout
-   */
   const logout = async () => {
     try {
       await userService.logout();
     } catch (error) {
-      console.error("Logout failed:", error);
+      console.error(
+        "Logout failed:",
+        error
+      );
     } finally {
-      setAuthState({ user: null });
-      localStorage.removeItem('etest_user');
-      sessionStorage.removeItem('etest_user');
+      setAuthState({
+        user: null,
+      });
+
+      localStorage.removeItem(
+        "etest_user"
+      );
+
+      sessionStorage.removeItem(
+        "etest_user"
+      );
     }
   };
 
@@ -78,17 +106,30 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    isAuthenticated: !!authState.user,
-    role: authState.user?.role
+    isAuthenticated:
+      Boolean(authState.user),
+    role:
+      authState.user?.role,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={value}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
+  const context =
+    useContext(AuthContext);
+
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error(
+      "useAuth must be used within an AuthProvider"
+    );
   }
+
   return context;
 };

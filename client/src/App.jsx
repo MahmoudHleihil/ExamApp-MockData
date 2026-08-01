@@ -23,7 +23,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
   
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     // Redirect to home if user doesn't have the required role
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
   
   // Render nested routes
@@ -98,6 +98,44 @@ const PrivateHeader = ({ user, navigate, handleLogout }) => (
   </header>
 );
 
+const DashboardRedirect = () => {
+  const { user } = useAuth();
+
+  switch (user?.role) {
+    case "Admin":
+      return (
+        <Navigate
+          to="/admin"
+          replace
+        />
+      );
+
+    case "Teacher":
+      return (
+        <Navigate
+          to="/teacher"
+          replace
+        />
+      );
+
+    case "Student":
+      return (
+        <Navigate
+          to="/student"
+          replace
+        />
+      );
+
+    default:
+      return (
+        <Navigate
+          to="/"
+          replace
+        />
+      );
+  }
+};
+
 const Footer = ({ user }) => (
   <footer className="mt-5 pt-5 border-top">
     {!user ? (
@@ -123,7 +161,7 @@ const Footer = ({ user }) => (
 
 function App() {
   const navigate = useNavigate();
-  const { user, login, register } = useAuth();
+  const { user, login } = useAuth();
   const [resetEmail, setResetEmail] = useState('');
 
   const handleLoginSuccess = (userData, rememberMe) => {
@@ -131,9 +169,19 @@ function App() {
     navigate('/dashboard');
   };
 
-  const handleRegisterSuccess = (userData) => {
-    register(userData);
-    navigate('/dashboard');
+  const handleRegisterSuccess = (registeredUser) => {
+    const isTeacher =
+      registeredUser?.role === "Teacher";
+
+    navigate("/login", {
+      replace: true,
+      state: {
+        registrationSuccess: true,
+        message: isTeacher
+          ? "Registration completed. Your teacher account is awaiting administrator approval."
+          : "Registration completed successfully. Please sign in.",
+      },
+    });
   };
 
   return (
@@ -200,13 +248,7 @@ function App() {
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={
-            user?.role === 'Admin' ? (
-              <Navigate to="/admin" replace />
-            ) : user?.role === 'Teacher' ? (
-              <Navigate to="/teacher" replace />
-            ) : (
-              <Navigate to="/student" replace />
-            )
+            <DashboardRedirect />
           } />
           
           <Route path="/admin/*" element={<AdminDashboard user={user} />} />

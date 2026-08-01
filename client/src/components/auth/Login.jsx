@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, } from 'react-router-dom';
 import { userService } from '../../api/userService';
 
 const savedUsers = [
@@ -34,6 +34,12 @@ const Login = ({ onLoginSuccess, onSwitchToForgot }) => {
   const [loading, setLoading] = useState(false);
   const [copiedField, setCopiedField] = useState('');
 
+  const location =
+    useLocation();
+
+  const registrationMessage =
+    location.state?.message;
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -121,6 +127,13 @@ const Login = ({ onLoginSuccess, onSwitchToForgot }) => {
           }}
         ></div>
       </div>
+
+      {registrationMessage && (
+        <div className="alert alert-success">
+          <i className="bi bi-check-circle-fill me-2" />
+          {registrationMessage}
+        </div>
+      )}
 
       {/* Right side - Form */}
       <div className="col-lg-6 bg-white p-4 p-md-5 d-flex align-items-center">

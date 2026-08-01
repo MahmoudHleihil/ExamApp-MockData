@@ -19,20 +19,47 @@ const Register = ({ onRegisterSuccess }) => {
   };
 
   // פונקציה אסינכרונית שמטפלת בהגשת טופס ההרשמה
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setStatusMsg({ type: '', text: '' });
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    setStatusMsg({
+      type: "",
+      text: "",
+    });
+
     setLoading(true);
 
     try {
-      const user = await userService.register(formData);
-      onRegisterSuccess(user);
-    } catch (err) {
-      if (err.message.includes('successful')) {
-        setStatusMsg({ type: 'success', text: err.message });
-      } else {
-        setStatusMsg({ type: 'danger', text: err.message });
-      }
+      const response =
+        await userService.register(
+          formData
+        );
+
+      const registeredUser =
+        response?.user ||
+        response?.data ||
+        response;
+
+      setStatusMsg({
+        type: "success",
+        text:
+          formData.role === "Teacher"
+            ? "Account created. Administrator approval is required before you can sign in."
+            : "Account created successfully. Redirecting to sign in...",
+      });
+
+      window.setTimeout(() => {
+        onRegisterSuccess(
+          registeredUser
+        );
+      }, 1200);
+    } catch (error) {
+      setStatusMsg({
+        type: "danger",
+        text:
+          error?.message ||
+          "Registration failed. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
